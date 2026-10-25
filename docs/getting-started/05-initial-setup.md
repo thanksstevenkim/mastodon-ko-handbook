@@ -71,6 +71,41 @@ Mastodon 4.7.3의 `db:migrate:setup` 작업은 신규 스키마에서 마이그�
 
 **경고:** 이 명령은 기존 운영 DB의 초기화·복구 지침으로 제시하는 것이 아닙니다. 이미 운영 중인 DB, 다른 `LOCAL_DOMAIN`, 복원된 데이터에 적용하지 말고 해당 환경의 공식 업그레이드/복구 절차를 따르세요.
 
+## 실측 사례: 시드 데이터·미디어 권한 및 서비스 최초 기동 (2026-10-25)
+
+**검증 상태: 사용자 역할·마이그레이션 기록, Web/Streaming의 HTTP 헬스 엔드포인트 확인. Sidekiq의 Docker Health 완료 및 로그인/게시/실제 연합은 별도 검증이 필요.**
+
+신규 DB 스키마 초기화 후 `user_roles`에서 `Admin`, `Moderator`, `Owner` 등 사용자 역할과 `schema_migrations` **615건**을 확인했습니다. 화면에는 4개 행이 반환됐으므로, 별도 역할이 하나 더 있을 수 있으나 상세값까지 단정하지 않습니다.
+
+로컬 미디어 디렉터리는 다음 명령으로 준비하고 UID/GID와 권한을 확인했습니다.
+
+```bash
+sudo install -d -o 991 -g 991 -m 0755 public/system
+stat -c '%u:%g %a %n' public/system
+```
+
+실측 결과는 `991:991 755 public/system`입니다.
+
+다음과 같이 Web·Sidekiq·Streaming을 시작했습니다.
+
+```bash
+sudo docker compose up -d web sidekiq streaming
+sudo docker compose ps
+```
+
+Docker Compose는 DB·Redis가 실행 중인 상태에서 나머지 세 컨테이너를 `Started`로 보고했습니다. 바로 직후 상태 확인에서 DB·Redis는 `healthy`, Web·Sidekiq·Streaming은 `health: starting`이었습니다.
+
+이어서 게스트 VM에서 HTTP 헬스 엔드포인트를 확인했습니다.
+
+```bash
+curl -fsS --max-time 10 http://127.0.0.1:3000/health
+curl -fsS --max-time 10 http://127.0.0.1:4000/api/v1/streaming/health
+```
+
+두 엔드포인트 모두 `OK`를 반환했습니다. 루트 파일시스템은 약 76 GiB 중 약 9.5 GiB 사용, 약 63 GiB 사용 가능했습니다.
+
+**검증 경계:** `OK`는 웹/스트리밍 HTTP 처리의 최소 동작 증거입니다. Sidekiq Health의 최종 `healthy` 여부, 비동기 큐 작업, 브라우저의 HTTPS 로그인, 계정 생성·게시·업로드·연합 기능은 아직 별도로 확인해야 합니다. 공식 Compose의 Web·Streaming 바인딩은 VM의 `127.0.0.1`에 한정되어 있으며 외부 접근을 위해 임의로 `0.0.0.0`으로 변경하지 않습니다.
+
 ## 1. 환경변수 파일을 준비하기
 
 Mastodon은 환경변수를 통해 설정됩니다. 공식 저장소의 `.env.production.sample`은 완성된 서버 설정이 아니라 **값을 채워야 하는 예시**입니다. 샘플에 켜져 있는 선택적 기능(예: Elasticsearch나 S3)을 사용하지 않는다면 해당 옵션을 명시적으로 꺼야 합니다.
