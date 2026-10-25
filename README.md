@@ -17,7 +17,8 @@
 5. [04. Docker Compose로 구성 이해하기](docs/getting-started/04-docker-compose.md) — 서비스, 네트워크, 이미지와 영속 볼륨
 6. [05. 최초 설치와 Mastodon 초기 설정](docs/getting-started/05-initial-setup.md) — 설정 원칙·단계별 실측 기록
 7. [05A. UTM에서 검증한 Mastodon 4.7.3 최초 설치 흐름](docs/getting-started/05a-utm-verified-installation.md) — **테스트 검증**, 설치부터 로그인·게시·미디어까지 통합 안내
-8. [06. 설치 후 첫날 운영 점검](docs/getting-started/06-first-day-checklist.md) — 실제 기능·연합·백업 점검표
+8. [05B. 신규 설치의 비밀키·PostgreSQL 인증 안전화 실험](docs/getting-started/05b-secure-configuration-lab.md) — **설계·공식 소스 대조**, 새 VM 실측 검증 대기
+9. [06. 설치 후 첫날 운영 점검](docs/getting-started/06-first-day-checklist.md) — 실제 기능·연합·백업 점검표
 
 ### 업그레이드와 운영
 
