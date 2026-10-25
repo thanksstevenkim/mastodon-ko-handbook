@@ -16,7 +16,7 @@
 
 ## 실측 사례: 전용 PostgreSQL 역할 및 DB 생성 (2026-10-25)
 
-**검증 상태: Docker Compose로 실행한 PostgreSQL에서 전용 역할·DB 생성과 SQL 연결까지 검증. Rails 마이그레이션 및 서비스 전체 기동은 아직 미검증.**
+**검증 상태: Docker Compose로 실행한 PostgreSQL에서 전용 역할·DB 생성과 SQL 연결까지 검증. Rails 스키마 초기화는 이후 단계에서 별도로 확인했고 서비스 전체 기동은 아직 미검증.**
 
 격리된 UTM ARM64 실험 VM에서 공식 Mastodon `v4.7.3` Compose의 `db`와 `redis`가 `healthy`인 상태를 확인하고 다음을 실행했습니다.
 
@@ -37,7 +37,7 @@ sudo docker compose exec -T db \
 
 ## 실측 사례: 로컬 환경변수 및 VAPID 키 준비 (2026-10-25)
 
-**검증 상태: 필수 환경변수 설정·VAPID 키 생성/저장·권한·Compose 구문 검사 성공. Rails 데이터베이스 초기화는 아직 미검증.**
+**검증 상태: 필수 환경변수 설정·VAPID 키 생성/저장·권한·Compose 구문 검사 성공. Rails DB 초기화는 이후 단계에서 별도로 확인했고 서비스 전체 기동은 아직 미검증.**
 
 UTM ARM64 VM에서 `.env.production`에 실험 도메인 `mastodon.test`, 내부 PostgreSQL `db` / Redis `redis` 연결값과 무작위 `SECRET_KEY_BASE` 및 Active Record 암호화 키 3개를 설정했습니다. 실험 구성에서는 검색·S3를 끄고 로컬 미디어를 사용하며, SMTP는 실제로 검증하지 않았습니다. `mastodon.test`는 이 로컬 실험을 위한 이름이고 공개 연합 서비스용 도메인이 아닙니다.
 
@@ -46,6 +46,30 @@ UTM ARM64 VM에서 `.env.production`에 실험 도메인 `mastodon.test`, 내부
 `.env.production`은 권한 `600`이었으며 `sudo docker compose config --quiet`가 오류 없이 통과했습니다. **비밀값은 저장소/운영 기록에 포함하지 않았습니다.**
 
 **중요:** `mastodon:setup` 등의 Rails 작업을 컨테이너에서 실행할 때, 컨테이너 내부에 작성된 파일이 호스트 `.env.production`에 자동 저장되는 것으로 가정해서는 안 됩니다. 실험에서는 **출력을 호스트에서 별도로 받아 키 항목만 기록하는 절차**를 사용했습니다. 설정 파일의 내용을 표준 출력 또는 공개 기록으로 보내지 마세요.
+
+## 실측 사례: 신규 Mastodon DB 스키마 초기화 (2026-10-25)
+
+**검증 상태: 공식 Mastodon 4.7.3 ARM64 컨테이너의 신규 DB 초기화 작업 종료 및 테이블 생성 확인. 초기 시드 데이터와 서비스 실행은 다음 단계에서 별도 검증.**
+
+앞서 만든 `mastodon_production`은 초기 검사에서 `public` 스키마에 테이블이 **0개**였습니다. 그런 다음 해당 **신규 실험 전용 DB**에 다음을 수행했습니다.
+
+```bash
+cd ~/mastodon-handbook-lab
+sudo docker compose run --rm --no-deps -e RAILS_ENV=production web bundle exec rails db:migrate:setup
+```
+
+명령은 별도 오류 메시지 없이 쉘로 복귀했습니다. 사후 검사에서 `public.accounts`, `public.users` 테이블이 존재했으며 `public` 스키마의 테이블은 **118개**였습니다. DB와 Redis 컨테이너는 모두 `healthy`였습니다.
+
+확인에 사용한 SQL:
+
+```bash
+sudo docker compose exec -T db psql -U mastodon -d mastodon_production -c "SELECT to_regclass('public.accounts') AS accounts_table, to_regclass('public.users') AS users_table;"
+sudo docker compose exec -T db psql -U mastodon -d mastodon_production -c "SELECT COUNT(*) AS table_count FROM pg_catalog.pg_tables WHERE schemaname = 'public';"
+```
+
+Mastodon 4.7.3의 `db:migrate:setup` 작업은 신규 스키마에서 마이그레이션과 시드를 처리하도록 정의되어 있지만, **이번 출력만으로 시드 데이터 내용까지 확인된 것은 아닙니다.** 관리자 계정에 필요한 `user_roles` 초기 데이터는 추후 SQL로 검증해야 합니다.
+
+**경고:** 이 명령은 기존 운영 DB의 초기화·복구 지침으로 제시하는 것이 아닙니다. 이미 운영 중인 DB, 다른 `LOCAL_DOMAIN`, 복원된 데이터에 적용하지 말고 해당 환경의 공식 업그레이드/복구 절차를 따르세요.
 
 ## 1. 환경변수 파일을 준비하기
 
