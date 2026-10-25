@@ -127,6 +127,16 @@ sudo docker compose run --rm --no-deps \
 
 `EMAIL_DOMAIN_ALLOWLIST`를 서비스 전체에 무조건 적용하거나 운영 환경의 무효한 메일 주소를 허용하는 방식으로 일반화하지 않습니다. 공개 서버에서는 정상적으로 수신 가능한 이메일과 실제 도메인 검증을 사용해야 합니다. **관리자 계정 생성 완료가 로그인·게시·메일 발송의 성공을 의미하지는 않습니다.**
 
+## 실측 사례: macOS Safari에서 Mastodon 로그인 성공 (2026-10-25)
+
+**검증 상태: 로컬 Ubuntu ARM64 VM의 Mastodon 4.7.3에 대해 macOS Safari에서 실험용 Owner 계정 `labadmin` 로그인 성공. 게시·이미지 업로드·메일 발송·실제 연합 통신은 아직 미검증.**
+
+앞 단계에서 UTM VM 주소 `192.168.64.4`의 Caddy가 `https://mastodon.test`을 로컬 TLS로 서비스하고, macOS의 `/etc/hosts`가 `mastodon.test`를 해당 VM에 매핑하는 것을 확인했습니다. macOS의 `curl --cacert ~/Downloads/mastodon-lab-root.crt https://mastodon.test/health`에서 `OK`를 확인했습니다. 이후 실험 담당자가 **Safari에서 실제 로그인 완료**를 보고했습니다. 이 보고에 근거하여 브라우저의 화면 표시 및 `labadmin` 계정의 로그인 성공을 확인한 것으로 기록합니다.
+
+이 테스트는 **공개 서버가 아닌 로컬 격리 실험**이며 실제 SMTP 전달, 새로운 게시물 및 미디어 처리, WebSocket 스트리밍 동작, Sidekiq 작업 성공, 다른 서버와의 ActivityPub 송수신 등을 입증하지 않습니다. 특히 `mastodon.test`는 공개 DNS와 연합 식별자에 사용할 도메인이 아닙니다.
+
+비밀키·인증서 개인키·생성된 관리자 임시 비밀번호는 GitHub에 보관하지 않습니다. 실험 종료 시 Mac의 `/etc/hosts` 항목과 사용자 키체인에 등록한 로컬 CA 신뢰 항목 정리를 점검하고, VM과 인증서 사용 범위를 유지·관리해야 합니다.
+
 ## 1. 환경변수 파일을 준비하기
 
 Mastodon은 환경변수를 통해 설정됩니다. 공식 저장소의 `.env.production.sample`은 완성된 서버 설정이 아니라 **값을 채워야 하는 예시**입니다. 샘플에 켜져 있는 선택적 기능(예: Elasticsearch나 S3)을 사용하지 않는다면 해당 옵션을 명시적으로 꺼야 합니다.
