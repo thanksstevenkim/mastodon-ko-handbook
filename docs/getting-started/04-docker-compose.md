@@ -1,6 +1,6 @@
 # 04. Docker Compose로 Mastodon 구성 이해하기
 
-> **검증 상태:** Mastodon 공식 4.7.3 Compose 예제 기반 구성 안내 · **범위:** Ubuntu의 Docker Engine + Compose v2 · **주의:** 이 문서만으로 운영 가능한 배포를 완성하지는 않습니다. 실제 설정과 설치는 다음 문서를 참고하세요.
+> **검증 상태:** Mastodon 공식 4.7.3 Compose 예제 기반 구성 안내 · **범위:** Ubuntu의 Docker Engine + Docker Compose 플러그인 · **주의:** 이 문서만으로 운영 가능한 배포를 완성하지는 않습니다. 실제 설정과 설치는 다음 문서를 참고하세요.
 
 [← 03. 도메인과 DNS](03-domain-and-dns.md) · [다음: 최초 설치와 설정 →](05-initial-setup.md)
 
@@ -12,7 +12,7 @@ Mastodon 4.7.3의 [공식 Compose 예제](https://github.com/mastodon/mastodon/b
 
 ## 실측 사례: UTM Ubuntu ARM64에서 Docker Engine 검증 (2026-10-25)
 
-**검증 상태: Docker 설치·기본 컨테이너 실행 확인. Mastodon 컨테이너 실행은 아직 미검증.**
+**검증 상태: Docker 설치·기본 컨테이너 실행과 Mastodon 공식 이미지의 ARM64 매니페스트 확인. Mastodon 컨테이너 실행은 아직 미검증.**
 
 [02. 서버 준비의 UTM 실측 환경](02-prerequisites.md)에서 Docker 공식 APT 저장소를 이용해 설치한 뒤 다음을 확인했습니다.
 
@@ -38,6 +38,22 @@ sudo docker run --rm hello-world
 `hello-world`는 Docker 데몬·이미지 다운로드·컨테이너 시작을 확인하는 **독립적인 최소 테스트**입니다. PostgreSQL, Redis, Mastodon 이미지가 실행 가능한지 또는 전체 설치가 성공했는지는 아직 알 수 없습니다.
 
 특히 Apple Silicon의 ARM64 VM에서는 **사용할 Mastodon과 Streaming 이미지가 linux/arm64를 실제 제공하는지 먼저 확인**해야 합니다. 이미지 태그가 동일해도 배포 아키텍처가 다를 수 있습니다. 이미지 호환성 검사는 이미지 태그를 고정한 뒤 별도로 진행합니다.
+
+### Mastodon 4.7.3 공식 이미지의 ARM64 플랫폼 확인
+
+동일한 UTM 게스트에서 다음을 실행해 공개 이미지 매니페스트를 조회했습니다.
+
+```bash
+sudo docker buildx imagetools inspect ghcr.io/mastodon/mastodon:v4.7.3
+sudo docker buildx imagetools inspect ghcr.io/mastodon/mastodon-streaming:v4.7.3
+```
+
+| 공식 이미지 태그 | 조회에서 확인한 플랫폼 | 이미지 인덱스 다이제스트 |
+| --- | --- | --- |
+| `ghcr.io/mastodon/mastodon:v4.7.3` | `linux/arm64`, `linux/amd64` | `sha256:7d82164ff7304362787dd2c301b4e18a5f3a3ed7bf30e421b2693e57c3ccebb9` |
+| `ghcr.io/mastodon/mastodon-streaming:v4.7.3` | `linux/arm64`, `linux/amd64` | `sha256:770f2e1f734fd0ed69628292638211f909eb87769f73db026c36f484ad3c6bd6` |
+
+**결론:** Web/Sidekiq와 Streaming 이미지 모두 ARM64 매니페스트가 존재합니다. 이는 **아키텍처 배포 지원 확인**이지 이미지 pull, DB 연결, 실행 및 전체 Mastodon 서비스 검증이 아닙니다. PostgreSQL·Redis 이미지도 실제 사용하는 태그 기준으로 별도 검증해야 합니다.
 
 실험에서는 `sudo docker`를 사용했습니다. 일반 계정을 `docker` 그룹에 넣으면 사실상 호스트의 강력한 관리자 권한을 가지므로 편의를 위해 무조건 추가하지 않습니다.
 
