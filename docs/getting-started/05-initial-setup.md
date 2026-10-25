@@ -35,6 +35,18 @@ sudo docker compose exec -T db \
 
 **주의:** 이 명령은 **새 DB에 한 번만** 실행하는 초기화 예시입니다. 역할이나 DB가 이미 있다면 재실행 시 오류가 발생할 수 있으며, 운영 DB를 초기화하려는 용도로 사용해서는 안 됩니다. 실험의 PostgreSQL 서비스는 공식 예제의 내부 네트워크 `trust` 인증을 사용하므로, 이 기록은 운영용 DB 인증 보안 가이드가 아닙니다. 비밀번호 기반 인증, 역할 권한, 백업 및 접속 제한은 공개 운영 환경에서 따로 검증해야 합니다.
 
+## 실측 사례: 로컬 환경변수 및 VAPID 키 준비 (2026-10-25)
+
+**검증 상태: 필수 환경변수 설정·VAPID 키 생성/저장·권한·Compose 구문 검사 성공. Rails 데이터베이스 초기화는 아직 미검증.**
+
+UTM ARM64 VM에서 `.env.production`에 실험 도메인 `mastodon.test`, 내부 PostgreSQL `db` / Redis `redis` 연결값과 무작위 `SECRET_KEY_BASE` 및 Active Record 암호화 키 3개를 설정했습니다. 실험 구성에서는 검색·S3를 끄고 로컬 미디어를 사용하며, SMTP는 실제로 검증하지 않았습니다. `mastodon.test`는 이 로컬 실험을 위한 이름이고 공개 연합 서비스용 도메인이 아닙니다.
+
+공식 `ghcr.io/mastodon/mastodon:v4.7.3` ARM64 이미지를 이용하여 `bundle exec rails mastodon:webpush:generate_vapid_key`를 **일회성 `docker compose run --rm --no-deps web`** 컨테이너에서 실행했습니다. VAPID 개인키와 공개키를 호스트의 `.env.production`에 저장했고, 두 변수 모두 값이 존재함을 재검증했습니다.
+
+`.env.production`은 권한 `600`이었으며 `sudo docker compose config --quiet`가 오류 없이 통과했습니다. **비밀값은 저장소/운영 기록에 포함하지 않았습니다.**
+
+**중요:** `mastodon:setup` 등의 Rails 작업을 컨테이너에서 실행할 때, 컨테이너 내부에 작성된 파일이 호스트 `.env.production`에 자동 저장되는 것으로 가정해서는 안 됩니다. 실험에서는 **출력을 호스트에서 별도로 받아 키 항목만 기록하는 절차**를 사용했습니다. 설정 파일의 내용을 표준 출력 또는 공개 기록으로 보내지 마세요.
+
 ## 1. 환경변수 파일을 준비하기
 
 Mastodon은 환경변수를 통해 설정됩니다. 공식 저장소의 `.env.production.sample`은 완성된 서버 설정이 아니라 **값을 채워야 하는 예시**입니다. 샘플에 켜져 있는 선택적 기능(예: Elasticsearch나 S3)을 사용하지 않는다면 해당 옵션을 명시적으로 꺼야 합니다.
