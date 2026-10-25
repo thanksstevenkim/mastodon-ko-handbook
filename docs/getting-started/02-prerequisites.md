@@ -50,7 +50,7 @@ docker version
 docker compose version
 ```
 
-`docker compose`는 Compose v2 플러그인 기반 명령입니다. Docker Engine 및 Compose 설치는 **운영체제와 배포판에 맞는 [Docker 공식 안내](https://docs.docker.com/engine/install/ubuntu/)**를 따르세요. 기존 패키지가 있을 때는 충돌 가능성을 살펴보고, 아무 서버에서나 자동 설치 스크립트를 실행하지 않습니다.
+`docker compose`는 Docker Compose 플러그인을 사용하는 명령입니다. 설치된 버전은 배포 시점에 따라 달라질 수 있으며, 이 핸드북의 UTM 검증에서는 Compose `v5.6.1`을 확인했습니다. Docker Engine 및 Compose 설치는 **운영체제와 배포판에 맞는 [Docker 공식 안내](https://docs.docker.com/engine/install/ubuntu/)**를 따르세요. 기존 패키지가 있을 때는 충돌 가능성을 살펴보고, 아무 서버에서나 자동 설치 스크립트를 실행하지 않습니다.
 
 ## 실측 사례: UTM에서 Ubuntu Server ARM64 설치 (2026-10-25)
 
