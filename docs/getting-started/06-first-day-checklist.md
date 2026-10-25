@@ -8,6 +8,54 @@
 
 Docker 컨테이너가 모두 실행 중이고 `healthy`라고 표시되어도, 이용자에게 보이는 기능이 모두 작동한다는 보장은 없습니다. 운영 시작 전에는 **인터넷 접속 → 계정·게시물 → 백그라운드 처리 → 연합 → 백업** 순서로 살펴봅니다.
 
+## 실측 사례: Mastodon 4.7.3 서비스 재시작 후 데이터 영속성 (2026-10-25)
+
+**검증 상태: 통과 — 공식 Docker Compose의 DB·Redis·Web·Sidekiq·Streaming 5개 서비스를 `stop` 후 `up -d`하여 모두 다시 `healthy`에 도달했고, 게시물·미디어 DB 레코드 및 호스트 미디어 파일의 개수/체크섬이 재시작 전후 일치.**
+
+UTM Ubuntu 24.04.5 ARM64 로컬 설치(`mastodon.test`, PostgreSQL 14, Redis 7, Caddy)에서 재시작 전 다음을 기록했습니다.
+
+| 검사 항목 | 재시작 전 | 재시작 후 | 상태 |
+| --- | ---: | ---: | --- |
+| `labadmin` 소유 `statuses` | 2 | 2 | 일치 |
+| `labadmin` 소유 `media_attachments` | 1 | 1 | 일치 |
+| `processing = 2` (complete) 첨부 | 1 | 1 | 일치 |
+| `public/system` 일반 파일 | 2 | 2 | 일치 |
+| 미디어 파일 집합 SHA-256 | `904413ebbe429c124a22454d5802ef3ad67e62d2015c0b13c3afe9ce2a9b293f` | 동일 | 일치 |
+
+실행한 서비스 재시작 명령:
+
+```bash
+cd ~/mastodon-handbook-lab
+sudo docker compose stop
+sudo docker compose up -d
+sudo docker compose ps
+```
+
+다섯 컨테이너는 즉시 `health: starting`으로 나타났고, **재기동 약 32초 후** `db`, `redis`, `web`, `sidekiq`, `streaming` 모두 `healthy`로 전환됐습니다.
+
+DB 검사는 전후 같은 SQL로 수행했습니다.
+
+```sql
+SELECT
+  (SELECT COUNT(*) FROM statuses WHERE account_id = a.id) AS statuses,
+  (SELECT COUNT(*) FROM media_attachments WHERE account_id = a.id) AS media,
+  (SELECT COUNT(*) FROM media_attachments
+   WHERE account_id = a.id AND processing = 2) AS completed_media
+FROM accounts a
+WHERE a.username = 'labadmin' AND a.domain IS NULL;
+```
+
+파일 검사:
+
+```bash
+sudo find public/system -type f | wc -l
+sudo find public/system -type f -exec sha256sum {} + | LC_ALL=C sort | sha256sum
+```
+
+마지막 명령은 개별 파일의 해시와 **파일 경로 문자열**을 모아 다시 해싱하는 방식이므로 동일 경로에서의 전후 비교에 유효합니다. 절대적인 백업 무결성이나 파일시스템 전체 검증을 의미하지는 않습니다.
+
+**검증 경계:** 이 실험은 컨테이너의 정상 `stop` 및 재기동만 시험했습니다. 운영체제/VM 재부팅, 컨테이너 재생성, 디스크/볼륨 장애, 백업에서의 독립 복원은 **아직 미검증**입니다. 재기동 후 **Safari 브라우저에서 게시물·이미지가 다시 표시되는지도 별도 확인이 필요**합니다. `docker compose down -v` 및 저장 디렉터리 제거 명령은 실행하지 않았습니다.
+
 ## 1. 구성과 서비스 확인
 
 Compose 프로젝트 디렉터리에서 다음을 확인합니다.
