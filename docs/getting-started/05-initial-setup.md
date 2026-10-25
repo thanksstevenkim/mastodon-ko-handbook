@@ -104,7 +104,11 @@ curl -fsS --max-time 10 http://127.0.0.1:4000/api/v1/streaming/health
 
 두 엔드포인트 모두 `OK`를 반환했습니다. 루트 파일시스템은 약 76 GiB 중 약 9.5 GiB 사용, 약 63 GiB 사용 가능했습니다.
 
-**검증 경계:** `OK`는 웹/스트리밍 HTTP 처리의 최소 동작 증거입니다. Sidekiq Health의 최종 `healthy` 여부, 비동기 큐 작업, 브라우저의 HTTPS 로그인, 계정 생성·게시·업로드·연합 기능은 아직 별도로 확인해야 합니다. 공식 Compose의 Web·Streaming 바인딩은 VM의 `127.0.0.1`에 한정되어 있으며 외부 접근을 위해 임의로 `0.0.0.0`으로 변경하지 않습니다.
+**추가 Health 재검증:** 약 3분 뒤 `sudo docker compose ps`에서 **DB·Redis·Web·Sidekiq·Streaming 5개가 모두 `healthy`**로 전환됐고 Web/Streaming Health가 각각 다시 `OK`를 반환했습니다. 단, Sidekiq의 실제 비동기 작업 실행·SMTP·브라우저 기능은 별도 테스트가 필요합니다.
+
+**관리자 계정 생성은 진행 중:** `bin/tootctl accounts create labadmin --email labadmin@mastodon.test --confirmed --approve --role Owner` 실행은 종료 코드 **1**을 반환했습니다. 오류 출력을 권한 `600` 파일에 보존했고 아직 원인 분석 전입니다. **사용자 생성 성공으로 기록하지 않습니다.**
+
+**검증 경계:** `OK`는 웹/스트리밍 HTTP 처리의 최소 동작 증거입니다. 비동기 큐 작업, 브라우저의 HTTPS 로그인, 계정 생성·게시·업로드·연합 기능은 아직 별도로 확인해야 합니다. 공식 Compose의 Web·Streaming 바인딩은 VM의 `127.0.0.1`에 한정되어 있으며 외부 접근을 위해 임의로 `0.0.0.0`으로 변경하지 않습니다.
 
 ## 1. 환경변수 파일을 준비하기
 
