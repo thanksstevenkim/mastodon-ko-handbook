@@ -1,8 +1,8 @@
 # 05. 최초 설치와 Mastodon 초기 설정
 
-> **검증 상태: 초안/부분 확인.** Mastodon 공식 설치·설정 문서와 4.7.3 컨테이너 구성을 바탕으로 **점검 순서와 설정 원칙**을 정리했습니다. 빈 Ubuntu 서버에서 처음부터 끝까지 검증한 **복사 실행형 Docker 설치 절차는 아닙니다.** 새 서버에서 실제 수행하기 전에 선택한 버전의 공식 절차와 차이를 확인하세요.
+> **검증 상태: UTM Mastodon 4.7.3 로컬 설치·로그인·게시·미디어 테스트 검증, 공개 운영용 범용 설치 절차는 부분 확인.** 아래 실측 사례의 ‘아직 미검증’ 표시는 **각 사례를 기록한 당시 단계의 상태**입니다. 이후 검증 결과까지 시간순으로 모은 문서는 [05A. UTM 실측 설치 흐름](05a-utm-verified-installation.md)을 참고하세요. 새 서버에서 실행하기 전 공식 릴리스 문서와 차이를 확인해야 합니다.
 
-[← 04. Docker Compose](04-docker-compose.md) · [다음: 첫날 점검 →](06-first-day-checklist.md)
+[← 04. Docker Compose](04-docker-compose.md) · [05A. 실측 설치 흐름 →](05a-utm-verified-installation.md) · [06. 첫날 점검 →](06-first-day-checklist.md)
 
 ## 시작 전 전제조건
 
@@ -13,6 +13,8 @@
 - SMTP 발송 서비스와 설정값, HTTPS·리버스 프록시 계획
 
 **기존 서버를 재설치하는 상황이라면 이 문서의 신규 설치 절차를 사용하지 마세요.** 먼저 백업·복구·업그레이드 문서를 확인해야 합니다.
+
+> **전체 실험 진행 상태:** 후속 [05A 문서](05a-utm-verified-installation.md)에서 UTM 새 VM의 설치 → HTTPS → Safari 로그인 → 게시물·JPEG → Sidekiq → 재시작/백업과 [독립 VM 복구](../operations/disaster-recovery-utm.md)를 구분해 확인할 수 있습니다. 아래 소제목의 검증 상태는 그 단계에서 기록한 역사적 스냅샷입니다.
 
 ## 실측 사례: 전용 PostgreSQL 역할 및 DB 생성 (2026-10-25)
 
