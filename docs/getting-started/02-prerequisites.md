@@ -52,6 +52,46 @@ docker compose version
 
 `docker compose`는 Compose v2 플러그인 기반 명령입니다. Docker Engine 및 Compose 설치는 **운영체제와 배포판에 맞는 [Docker 공식 안내](https://docs.docker.com/engine/install/ubuntu/)**를 따르세요. 기존 패키지가 있을 때는 충돌 가능성을 살펴보고, 아무 서버에서나 자동 설치 스크립트를 실행하지 않습니다.
 
+## 실측 사례: UTM에서 Ubuntu Server ARM64 설치 (2026-10-25)
+
+**검증 상태: 해당 실험 환경에서 확인 완료.** 아래는 보편적인 권장 사양이 아니라, 한 대의 Apple Silicon 맥북에서 UTM 가상화로 실제 확인한 값입니다.
+
+| 항목 | 실측 결과 |
+| --- | --- |
+| 게스트 OS | Ubuntu Server 24.04.5 LTS |
+| 아키텍처 | `aarch64` |
+| 호스트 이름 | `mastodon-lab` (실험용 이름) |
+| 네트워크 | UTM Shared Network(NAT), DHCP 연결 확인 |
+| SSH | `systemctl is-active ssh` → `active`; 맥북 터미널에서 접속 성공 |
+| 게스트 메모리 | 약 5.8 GiB, Swap 4 GiB |
+| 가상 디스크 | 80 GiB |
+| 루트 파일시스템 | LVM 위 ext4, 온라인 확장 후 `df -h /` → 약 76 GiB |
+| 원복 준비 | Docker 설치 전에 원본 VM 복제본 보관 |
+
+### 설치 시 LVM 공간이 절반만 보인 사례
+
+Ubuntu Server 자동 파티셔닝 결과, 80 GiB 가상 디스크의 `ubuntu-vg`에는 약 38.47 GiB의 여유 공간이 남아 있었습니다. 루트 논리 볼륨은 처음에 약 38.47 GiB만 사용했습니다. **디스크의 나머지 용량이 사라진 것은 아니었습니다.**
+
+진단할 때는 먼저 읽기 전용으로 확인합니다.
+
+```bash
+lsblk -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINTS
+sudo vgs
+sudo lvs
+findmnt -no SOURCE,FSTYPE /
+```
+
+해당 실험에서는 `VFree=38.47g`, 루트 LV가 `/dev/ubuntu-vg/ubuntu-lv`, 루트 파일시스템이 `ext4`임을 확인한 다음 아래 **상태 변경 명령**으로 확장했습니다.
+
+```bash
+# 검증된 실험 VM의 LV와 동일할 때만 참고할 것
+sudo lvextend -l +100%FREE -r /dev/ubuntu-vg/ubuntu-lv
+```
+
+`-l +100%FREE`는 Volume Group의 **남은 모든 공간**을 할당하므로 다른 LV를 만들 공간이 없어집니다. `-r`은 지원되는 파일시스템의 확장도 함께 수행합니다. 실행 전 현재 LV 경로와 파일시스템 종류를 확인하고, 별도 VM 복제본 또는 백업을 준비하세요. **다른 서버에 이 명령을 그대로 실행하지 마세요.**
+
+확장 후 `df -h /`에서 루트 파일시스템 약 76 GiB, 사용 가능 약 66 GiB가 확인됐고, `sudo vgs`의 `VFree`는 0이었습니다. 이 결과는 **Ubuntu 디스크 확장 성공**을 뜻하며 Mastodon 설치 검증을 뜻하지는 않습니다.
+
 ## SSH 접근 보안
 
 1. **별도 터미널에서 SSH 공개키 로그인이 가능한지 먼저 확인**합니다.
