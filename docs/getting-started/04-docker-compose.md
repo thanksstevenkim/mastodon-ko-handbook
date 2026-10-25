@@ -93,6 +93,22 @@ sudo docker compose exec -T redis redis-cli ping
 
 본 실험의 공식 Compose 예제는 DB 서비스에 `POSTGRES_HOST_AUTH_METHOD=trust`를 사용하며 DB 포트를 호스트에 게시하지 않습니다. 이 설정은 **격리된 실험에서 확인한 공식 예제 구성**일 뿐, 실제 인터넷 공개 운영을 위한 인증 설정으로 권장되지 않습니다. 운영 환경에서는 DB 비밀번호 및 접근 정책을 별도로 설계해야 합니다.
 
+## 실측 사례: 공식 Mastodon 이미지 다운로드 및 ARM64 확인 (2026-10-25)
+
+**검증 상태: 공식 Mastodon v4.7.3 애플리케이션·Streaming 이미지 pull 성공 및 로컬 이미지 ARM64 확인. 서비스 기동은 아직 미검증.**
+
+앞서 `buildx imagetools inspect`로 ARM64 매니페스트를 확인한 뒤, 같은 UTM ARM64 VM에서 다음을 실행했습니다.
+
+```bash
+sudo docker compose pull web streaming
+sudo docker image inspect ghcr.io/mastodon/mastodon:v4.7.3 --format '{{.Os}}/{{.Architecture}}'
+sudo docker image inspect ghcr.io/mastodon/mastodon-streaming:v4.7.3 --format '{{.Os}}/{{.Architecture}}'
+```
+
+두 이미지 모두 정상 다운로드됐고 `docker image inspect` 결과가 각각 `linux/arm64`였습니다. 공식 Compose 설정에서 `web`과 `sidekiq`는 동일한 Mastodon 이미지를 사용합니다.
+
+이는 네이티브 ARM64 **이미지 확보에 대한 검증**으로, Rails 초기화·PostgreSQL 연결·Sidekiq/Streaming 실행·HTTPS/연합 기능의 성공을 의미하지 않습니다.
+
 ## 기본 서비스와 접속 범위
 
 | 서비스 | 기본 역할 | 외부 공개 여부 |
