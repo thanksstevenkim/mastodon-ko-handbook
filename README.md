@@ -22,7 +22,8 @@
 
 - [Mastodon 업그레이드: 안전한 진행 순서](docs/operations/upgrade-checklist.md) — 버전 확인, CI, 마이그레이션, 배포 후 검증
 - [런타임·의존성 보안 패치](docs/operations/security-patch-rollout.md) — 변경 범위와 Web/Sidekiq 단계별 배포
-- [백업 준비와 복구 검증 체크리스트](docs/operations/backup-readiness.md) — **복구 절차는 아직 미작성**
+- [백업 준비와 복구 검증 체크리스트](docs/operations/backup-readiness.md) — 백업·무결성 검사·실험 복원 점검
+- [독립 VM에서 Mastodon 4.7.3 전체 재해 복구 실험](docs/operations/disaster-recovery-utm.md) — **Checkpoint 21 테스트 검증**, PostgreSQL·미디어·HTTPS·로그인·홈 피드 복원
 - [Sidekiq 대기열이 쌓일 때](docs/operations/sidekiq-queues.md) — 연합 전송 작업과 장애 구분
 
 ### 장애 대응과 보안
@@ -36,7 +37,7 @@
 
 ## 작성 예정인 분야
 
-버전별 Docker Compose 신규 설치의 **처음부터 끝까지 재현·검증한 실습**, 검증된 전체 백업·복구, 검색 인덱스의 안전한 전환·롤백, ActivityPub 동작 원리 등은 계속 보강할 예정입니다. **아직 문서가 없는 기능을 지원 완료로 표시하지 않습니다.**
+버전별 Docker Compose 신규 설치의 **처음부터 끝까지 재현 가능한 실습 문서**, 실험 환경을 넘어선 **운영 서버 수준의 백업·재해 복구**, 검색 인덱스의 안전한 전환·롤백, ActivityPub 동작 원리 등은 계속 보강할 예정입니다. 소규모 독립 VM 복구는 [Checkpoint 21](docs/operations/disaster-recovery-utm.md)에서 검증했지만 운영 환경의 동일한 복구를 보장하지는 않습니다. **아직 문서가 없거나 검증하지 않은 기능을 지원 완료로 표시하지 않습니다.**
 
 ## 이 프로젝트의 목적과 범위
 
