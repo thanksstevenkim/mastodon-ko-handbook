@@ -8,15 +8,16 @@
 
 ### 처음 시작하는 운영자를 위한 기본편
 
-아래 순서대로 읽으면 **구조 이해 → 서버 준비 → 초기 구축 → 운영 검증**까지 이어집니다. 4.7.x 예시를 바탕으로 작성했으나, 신규 서버 설치를 처음부터 끝까지 실습 검증한 문서는 아니므로 버전별 공식 안내를 함께 확인해 주세요.
+아래 순서대로 읽으면 **구조 이해 → 서버 준비 → 초기 구축 → 운영 검증**까지 이어집니다. Mastodon 4.7.3의 **UTM 로컬 VM 최초 설치와 실제 기능 사용은 실험 검증**했지만, 공개 인터넷 운영용 범용 설치 스크립트와 동일하지는 않습니다. 버전별 공식 안내와 검증 범위를 함께 확인해 주세요.
 
 1. [00. 마스토돈 서버 운영을 시작하기 전에](docs/getting-started/00-introduction.md) — 운영 목적, 유지보수 책임, 설치 방식
 2. [01. Mastodon 서버의 구성 요소](docs/getting-started/01-architecture.md) — Web, Sidekiq, Streaming, PostgreSQL, Redis 등
 3. [02. 서버 준비](docs/getting-started/02-prerequisites.md) — Ubuntu, SSH, 방화벽, 용량과 백업
 4. [03. 도메인·DNS·HTTPS와 메일 준비](docs/getting-started/03-domain-and-dns.md) — LOCAL_DOMAIN, DNS, 인증서, SMTP
 5. [04. Docker Compose로 구성 이해하기](docs/getting-started/04-docker-compose.md) — 서비스, 네트워크, 이미지와 영속 볼륨
-6. [05. 최초 설치와 Mastodon 초기 설정](docs/getting-started/05-initial-setup.md) — **초안/부분 확인**, 설정 원칙과 초기화 순서
-7. [06. 설치 후 첫날 운영 점검](docs/getting-started/06-first-day-checklist.md) — 실제 기능·연합·백업 점검표
+6. [05. 최초 설치와 Mastodon 초기 설정](docs/getting-started/05-initial-setup.md) — 설정 원칙·단계별 실측 기록
+7. [05A. UTM에서 검증한 Mastodon 4.7.3 최초 설치 흐름](docs/getting-started/05a-utm-verified-installation.md) — **테스트 검증**, 설치부터 로그인·게시·미디어까지 통합 안내
+8. [06. 설치 후 첫날 운영 점검](docs/getting-started/06-first-day-checklist.md) — 실제 기능·연합·백업 점검표
 
 ### 업그레이드와 운영
 
@@ -37,7 +38,7 @@
 
 ## 작성 예정인 분야
 
-버전별 Docker Compose 신규 설치의 **처음부터 끝까지 재현 가능한 실습 문서**, 실험 환경을 넘어선 **운영 서버 수준의 백업·재해 복구**, 검색 인덱스의 안전한 전환·롤백, ActivityPub 동작 원리 등은 계속 보강할 예정입니다. 소규모 독립 VM 복구는 [Checkpoint 21](docs/operations/disaster-recovery-utm.md)에서 검증했지만 운영 환경의 동일한 복구를 보장하지는 않습니다. **아직 문서가 없거나 검증하지 않은 기능을 지원 완료로 표시하지 않습니다.**
+버전별 Docker Compose 신규 설치의 **외부 독자에 의한 독립 재현 및 운영 배포 수준의 완성된 실행 절차**, 실험 환경을 넘어선 **운영 서버 수준의 백업·재해 복구**, 검색 인덱스의 안전한 전환·롤백, ActivityPub 동작 원리 등은 계속 보강할 예정입니다. 소규모 독립 VM 복구는 [Checkpoint 21](docs/operations/disaster-recovery-utm.md)에서 검증했지만 운영 환경의 동일한 복구를 보장하지는 않습니다. **아직 문서가 없거나 검증하지 않은 기능을 지원 완료로 표시하지 않습니다.**
 
 ## 이 프로젝트의 목적과 범위
 
