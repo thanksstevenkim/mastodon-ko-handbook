@@ -10,6 +10,37 @@
 
 Mastodon 4.7.3의 [공식 Compose 예제](https://github.com/mastodon/mastodon/blob/v4.7.3/docker-compose.yml)는 **운영 서버 배포용**이며, 로컬 개발용 구성과는 다릅니다. 선택한 Mastodon 버전과 **동일한 태그의 예제 파일과 이미지**를 사용하세요.
 
+## 실측 사례: UTM Ubuntu ARM64에서 Docker Engine 검증 (2026-10-25)
+
+**검증 상태: Docker 설치·기본 컨테이너 실행 확인. Mastodon 컨테이너 실행은 아직 미검증.**
+
+[02. 서버 준비의 UTM 실측 환경](02-prerequisites.md)에서 Docker 공식 APT 저장소를 이용해 설치한 뒤 다음을 확인했습니다.
+
+| 검사 | 관찰 결과 |
+| --- | --- |
+| Docker Engine Client/Server | `29.9.2` / `29.9.2` |
+| Docker Compose | `v5.6.1` |
+| containerd | `2.4.2` |
+| Docker 데몬 | `systemctl is-active docker` → `active` |
+| Docker 아키텍처 | `sudo docker info --format '{{.Architecture}}'` → `aarch64` |
+| `hello-world` | ARM64 이미지 pull 및 컨테이너 실행 성공; `Hello from Docker!` 출력 |
+
+기본 검증 명령은 다음과 같습니다.
+
+```bash
+sudo docker version
+docker compose version
+systemctl is-active docker
+sudo docker info --format '{{.Architecture}}'
+sudo docker run --rm hello-world
+```
+
+`hello-world`는 Docker 데몬·이미지 다운로드·컨테이너 시작을 확인하는 **독립적인 최소 테스트**입니다. PostgreSQL, Redis, Mastodon 이미지가 실행 가능한지 또는 전체 설치가 성공했는지는 아직 알 수 없습니다.
+
+특히 Apple Silicon의 ARM64 VM에서는 **사용할 Mastodon과 Streaming 이미지가 linux/arm64를 실제 제공하는지 먼저 확인**해야 합니다. 이미지 태그가 동일해도 배포 아키텍처가 다를 수 있습니다. 이미지 호환성 검사는 이미지 태그를 고정한 뒤 별도로 진행합니다.
+
+실험에서는 `sudo docker`를 사용했습니다. 일반 계정을 `docker` 그룹에 넣으면 사실상 호스트의 강력한 관리자 권한을 가지므로 편의를 위해 무조건 추가하지 않습니다.
+
 ## 기본 서비스와 접속 범위
 
 | 서비스 | 기본 역할 | 외부 공개 여부 |
