@@ -155,18 +155,7 @@ curl -fsS --max-time 10 http://127.0.0.1:4000/api/v1/streaming/health
 
 두 엔드포인트는 각각 `OK`를 반환했습니다. Web·Streaming 포트는 VM 루프백으로 제한했으며, DB·Redis 포트를 호스트 외부로 공개하지 않았습니다.
 
-## 8. Caddy 로컬 HTTPS와 Safari 로그인
-
-Ubuntu 호스트에서 Caddy를 설치·실행하고, 로컬 `mastodon.test`와 `tls internal`을 사용하는 프록시를 구성했습니다. 경로 `/api/v1/streaming` 및 하위 경로는 Streaming으로, 나머지는 Web으로 보냈습니다. 당시 구성과 로컬 CA 경로는 [03. 도메인·HTTPS](03-domain-and-dns.md)의 실측 Caddyfile 예제에 기록되어 있습니다.
-
-- Caddy 설정 검사: `Valid configuration`.
-- VM의 인증서 체인 확인을 수반한 HTTPS Web·Streaming Health: `OK`.
-- Mac의 `/etc/hosts` 실험용 이름 매핑 및 **CA 공개 루트 인증서**를 이용한 HTTPS Web Health: `OK`.
-- macOS Safari에서 `labadmin` 계정 **실제 로그인 성공**.
-
-로컬 CA의 **개인키를 복사하지 마세요.** Mac에 일시적으로 추가한 CA 신뢰와 hosts 항목은 실험 후 복구해야 하며, 예제의 원본 VM DHCP 주소를 새 VM에 그대로 바인딩하면 실패할 수 있습니다. [Checkpoint 21 독립 VM 복구](../operations/disaster-recovery-utm.md)에서도 과거 IP를 복사한 Caddy `bind` 때문에 재시작하는 장애를 실제로 경험했습니다.
-
-## 9. 관리자 생성과 테스트용 이메일 도메인 특례
+## 8. 관리자 생성과 테스트용 이메일 도메인 특례
 
 실험에서는 신규 `labadmin` 계정을 Owner 역할로 만들었습니다. 처음에 `--confirmed`·`--approve`를 사용한 관리자 생성이 종료 코드 1과 이메일 주소의 `unreachable` 오류로 실패했습니다. 해당 DB에 계정·사용자 레코드가 없음을 확인한 뒤, **격리된 실험에서 일회성 계정 생성 컨테이너에만** `EMAIL_DOMAIN_ALLOWLIST=mastodon.test`를 적용한 재시도가 성공했습니다.
 
@@ -182,6 +171,17 @@ sudo docker compose run --rm --no-deps \
 DB 조회에서 `Owner`, `approved=true`, `confirmed_at IS NOT NULL=true`를 확인했습니다. 실제 관리자 비밀번호는 공개하지 않았습니다.
 
 **운영 경계:** `.test` 특례는 이메일 DNS 검증을 우회하기 위한 로컬 실험 조치이며, 운영 서버에 상시 적용하면 안 됩니다. 실제 이메일을 수신할 수 있는 도메인과 검증된 SMTP 설정을 사용해야 합니다. 임시 비밀번호가 생성되는 명령의 출력을 다른 사람에게 공유하거나 공개 저장소에 남기지 마세요.
+
+## 9. Caddy 로컬 HTTPS와 Safari 로그인
+
+Ubuntu 호스트에서 Caddy를 설치·실행하고, 로컬 `mastodon.test`와 `tls internal`을 사용하는 프록시를 구성했습니다. 경로 `/api/v1/streaming` 및 하위 경로는 Streaming으로, 나머지는 Web으로 보냈습니다. 당시 구성과 로컬 CA 경로는 [03. 도메인·HTTPS](03-domain-and-dns.md)의 실측 Caddyfile 예제에 기록되어 있습니다.
+
+- Caddy 설정 검사: `Valid configuration`.
+- VM의 인증서 체인 확인을 수반한 HTTPS Web·Streaming Health: `OK`.
+- Mac의 `/etc/hosts` 실험용 이름 매핑 및 **CA 공개 루트 인증서**를 이용한 HTTPS Web Health: `OK`.
+- macOS Safari에서 `labadmin` 계정 **실제 로그인 성공**.
+
+로컬 CA의 **개인키를 복사하지 마세요.** Mac에 일시적으로 추가한 CA 신뢰와 hosts 항목은 실험 후 복구해야 하며, 예제의 원본 VM DHCP 주소를 새 VM에 그대로 바인딩하면 실패할 수 있습니다. [Checkpoint 21 독립 VM 복구](../operations/disaster-recovery-utm.md)에서도 과거 IP를 복사한 Caddy `bind` 때문에 재시작하는 장애를 실제로 경험했습니다.
 
 ## 10. 설치 완료 판정은 화면·DB·작업 처리까지
 
