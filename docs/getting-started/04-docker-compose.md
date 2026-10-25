@@ -72,6 +72,27 @@ sudo docker buildx imagetools inspect redis:7-alpine
 
 실험에서는 `sudo docker`를 사용했습니다. 일반 계정을 `docker` 그룹에 넣으면 사실상 호스트의 강력한 관리자 권한을 가지므로 편의를 위해 무조건 추가하지 않습니다.
 
+## 실측 사례: PostgreSQL·Redis 컨테이너 초기 기동 (2026-10-25)
+
+**검증 상태: 두 컨테이너 기동, Health 상태와 실제 기본 쿼리/명령 정상. Mastodon DB 초기화는 아직 미검증.**
+
+새 VM의 공식 `v4.7.3` Compose 파일에서 `.env.production`이라는 빈 파일을 권한 `600`으로 준비하고 `sudo docker compose config --quiet`를 실행했습니다. 설정 검사가 오류 없이 끝난 뒤 **DB와 Redis 서비스만** 실행했습니다.
+
+```bash
+cd ~/mastodon-handbook-lab
+sudo docker compose up -d db redis
+sudo docker compose ps db redis
+sudo docker compose exec -T db pg_isready -U postgres
+sudo docker compose exec -T db psql -U postgres -d postgres -c 'SELECT current_database(), current_user;'
+sudo docker compose exec -T redis redis-cli ping
+```
+
+첫 실행 직후 두 컨테이너의 상태는 `health: starting`이었고, PostgreSQL `pg_isready`는 `no response`를 반환했습니다. Redis는 즉시 `PONG`을 반환했습니다. 약 1분 후 재검사에서는 두 서비스가 **`healthy`**로 전환됐고 PostgreSQL의 `pg_isready`는 `accepting connections`, SQL 조회에서는 `postgres / postgres`, Redis는 `PONG`을 확인했습니다.
+
+**교훈:** `Started`는 DB가 연결 가능한 준비 상태라는 뜻이 아닙니다. 최초 시작에는 초기화 시간이 필요할 수 있으며, `healthy`와 실제 연결 테스트를 모두 확인합니다. 연결이 계속 실패한다면 데이터 폴더를 지우지 말고 `sudo docker compose logs --tail=60 db`로 원인을 확인합니다.
+
+본 실험의 공식 Compose 예제는 DB 서비스에 `POSTGRES_HOST_AUTH_METHOD=trust`를 사용하며 DB 포트를 호스트에 게시하지 않습니다. 이 설정은 **격리된 실험에서 확인한 공식 예제 구성**일 뿐, 실제 인터넷 공개 운영을 위한 인증 설정으로 권장되지 않습니다. 운영 환경에서는 DB 비밀번호 및 접근 정책을 별도로 설계해야 합니다.
+
 ## 기본 서비스와 접속 범위
 
 | 서비스 | 기본 역할 | 외부 공개 여부 |
