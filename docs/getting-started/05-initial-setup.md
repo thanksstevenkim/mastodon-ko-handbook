@@ -137,6 +137,27 @@ sudo docker compose run --rm --no-deps \
 
 비밀키·인증서 개인키·생성된 관리자 임시 비밀번호는 GitHub에 보관하지 않습니다. 실험 종료 시 Mac의 `/etc/hosts` 항목과 사용자 키체인에 등록한 로컬 CA 신뢰 항목 정리를 점검하고, VM과 인증서 사용 범위를 유지·관리해야 합니다.
 
+## 실측 사례: 로컬 게시물 PostgreSQL 저장 확인 (2026-10-25)
+
+**검증 상태: macOS Safari에서 Owner 계정 로그인 성공 이후 실험용 게시물이 PostgreSQL `statuses` 테이블에 존재함을 확인. 새로고침 후의 화면 표시·본문·공개 범위는 본 검사의 SQL로는 별도 확인하지 않음.**
+
+새로 만든 `labadmin` 계정의 로컬 게시물 수를 다음과 같이 조회했습니다.
+
+```bash
+sudo docker compose exec -T db \
+  psql -U mastodon -d mastodon_production \
+  -c "
+SELECT COUNT(*) AS local_statuses
+FROM statuses
+WHERE account_id = (
+  SELECT id FROM accounts
+  WHERE username = 'labadmin' AND domain IS NULL
+);
+"
+```
+
+실측 `local_statuses`는 **1**이었습니다. 이 결과는 계정과 연결된 게시물 데이터의 저장을 뒷받침합니다. **미디어 첨부·백그라운드 작업·외부 연합 전송의 성공 증거는 아닙니다.**
+
 ## 1. 환경변수 파일을 준비하기
 
 Mastodon은 환경변수를 통해 설정됩니다. 공식 저장소의 `.env.production.sample`은 완성된 서버 설정이 아니라 **값을 채워야 하는 예시**입니다. 샘플에 켜져 있는 선택적 기능(예: Elasticsearch나 S3)을 사용하지 않는다면 해당 옵션을 명시적으로 꺼야 합니다.
