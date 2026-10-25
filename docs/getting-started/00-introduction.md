@@ -1,6 +1,6 @@
 # 00. 마스토돈 서버 운영을 시작하기 전에
 
-> **검증 상태:** 공식 문서 및 운영 사례 기반 입문 안내 · **작성 기준:** 2026-10-25, Mastodon 4.7.x 계열과 Ubuntu/Docker Compose를 예시로 사용합니다. 새 서버를 실제 설치한 통합 실습은 아직 진행하지 않았습니다.
+> **검증 상태:** 공식 문서 및 운영 사례 기반 입문 안내 · **작성 기준:** 2026-10-25, Mastodon 4.7.x 계열과 Ubuntu/Docker Compose를 예시로 사용합니다. 2026-10-25에 UTM 로컬 VM에서 4.7.3 최초 설치와 주요 기능을 검증했으며, [05A 실측 설치 가이드](05a-utm-verified-installation.md)에 기록했습니다. 공개 운영용 범용 설치 절차는 별도 검증이 필요합니다.
 
 [← 핸드북 목차](../../README.md) · [다음: Mastodon 구성 요소 →](01-architecture.md)
 
@@ -43,7 +43,8 @@ Mastodon(마스토돈)을 설치한다는 것은 단순히 SNS 앱을 실행하�
 3. [03. 도메인과 DNS](03-domain-and-dns.md): 서버 정체성과 HTTPS·메일
 4. [04. Docker Compose](04-docker-compose.md): 구성 파일·데이터 보존
 5. [05. 초기 설정](05-initial-setup.md): 환경변수·계정·서버 정보
-6. [06. 첫날 점검](06-first-day-checklist.md): 서비스가 실제로 작동하는지 확인
+6. [05A. UTM 실측 설치](05a-utm-verified-installation.md): 확인된 로컬 설치 흐름과 중단 기준
+7. [06. 첫날 점검](06-first-day-checklist.md): 서비스가 실제로 작동하는지 확인
 
 설치 이후에는 [업그레이드](../operations/upgrade-checklist.md), [백업 준비](../operations/backup-readiness.md), [문제 해결](../troubleshooting/known-failures.md) 문서를 참고하세요.
 
