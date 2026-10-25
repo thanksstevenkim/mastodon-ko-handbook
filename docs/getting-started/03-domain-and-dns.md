@@ -64,6 +64,43 @@ Mastodon 4.7.3의 Web·Sidekiq·Streaming을 포함한 핵심 컨테이너 다�
 
 `mastodon.test`는 예약된 테스트 도메인이므로 공인 DNS·Let's Encrypt·실제 연합 통신을 전제로 하지 않습니다. 공개 서버에서 `LOCAL_DOMAIN`을 선택하고 HTTPS를 설정하는 절차와는 구분하세요.
 
+## 실측 사례: Caddy 로컬 HTTPS 프록시 검사 통과 (2026-10-25)
+
+**검증 상태: UTM VM 내부에서 `mastodon.test`에 대한 Caddy TLS 설정/인증서 검증 및 Web·Streaming HTTPS Health 응답 확인. 맥북 Safari 접근은 아직 미검증.**
+
+기본 Caddyfile을 백업하고, 아래 형태의 **실험 VM 전용** 설정을 적용했습니다.
+
+```caddyfile
+{
+    auto_https disable_redirects
+}
+
+https://mastodon.test {
+    bind 192.168.64.4
+    tls internal
+
+    @streaming path /api/v1/streaming /api/v1/streaming/*
+
+    handle @streaming {
+        reverse_proxy 127.0.0.1:4000
+    }
+
+    handle {
+        reverse_proxy 127.0.0.1:3000
+    }
+}
+```
+
+- `sudo caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile` → `Valid configuration`
+- `sudo systemctl reload caddy` 이후 `systemctl is-active caddy` → `active`
+- TCP 443 리스너 → `192.168.64.4:443`
+- 로컬 CA 공개 인증서 `/var/lib/caddy/.local/share/caddy/pki/authorities/local/root.crt` 존재
+- VM 내부에서 `--resolve mastodon.test:443:192.168.64.4 --cacert <root.crt 경로>`를 사용한 HTTPS `/health`, `/api/v1/streaming/health` 모두 → `OK`
+
+`caddy validate`는 설정 들여쓰기 관련 포맷 경고를 보여주었지만 구문 검사는 통과했습니다. `--cacert` 검증은 TLS 체인을 검증한 결과이며, 단순한 `-k` 인증서 무시 테스트가 아닙니다.
+
+**주의:** `192.168.64.4`는 실험 당시 DHCP 주소입니다. `bind` 설정에 고정되므로 주소 변경 시 수정해야 합니다. macOS 브라우저에서 사용하려면 macOS의 이름 해석과 **공개 루트 CA 인증서 신뢰 설정**이 추가로 필요하며, 개인키를 외부로 복사하면 안 됩니다. 별도 로컬 CA를 맥북 시스템 신뢰 저장소에 추가하면 그 CA가 발급한 다른 인증서까지 신뢰하게 되는 보안 영향을 이해해야 합니다. 로컬에서 확인된 HTTPS 성공을 실제 공개 DNS·ACME 인증서 발급·연합 송수신 성공으로 오해하지 마세요.
+
 ## 메일은 별도 준비 항목
 
 Mastodon은 계정 확인, 알림, 비밀번호 복구 등에 메일 발송이 필요합니다. 운영 초기부터 **신뢰할 수 있는 SMTP 제공자**를 준비하는 편이 좋습니다.
