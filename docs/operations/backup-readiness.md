@@ -89,7 +89,7 @@ gpg --batch --pinentry-mode loopback --passphrase-fd 3 \
 
 실측 결과 `Restore Command PASSED`가 출력됐고, 복원된 DB에서 `labadmin` 로컬 계정 **1개**, `statuses` **2건**, `media_attachments` **1건**을 조회했습니다. 원본 실험 DB에서 이전에 확인한 개수와 일치했습니다.
 
-**범위와 정리:** `--rm` 컨테이너는 `docker stop mastodon-lab-pg-restore-check`로 정지하면 임시 DB도 함께 삭제됩니다. 이 정리는 **복원 테스트 컨테이너에만** 적용해야 하며 기존 Mastodon Compose의 DB·Redis·Web·Sidekiq·Streaming 컨테이너를 중지하거나 삭제해서는 안 됩니다. 테스트 컨테이너의 삭제는 아직 이 단계의 실측 결과로 확인되지 않았습니다.
+**범위와 정리:** `--rm` 컨테이너는 `docker stop mastodon-lab-pg-restore-check`로 정지하면 임시 DB도 함께 삭제됩니다. 이 정리는 **복원 테스트 컨테이너에만** 적용해야 하며 기존 Mastodon Compose의 DB·Redis·Web·Sidekiq·Streaming 컨테이너를 중지하거나 삭제해서는 안 됩니다. **정리 완료 확인:** 복원 시험 후 `postgres:14-alpine|none|true` 구성을 `docker inspect`로 재검증하고, `docker stop mastodon-lab-pg-restore-check`를 실행했습니다. 이어서 같은 이름에 대한 `docker container inspect` 실패로 임시 컨테이너가 제거됐음을 확인했습니다. `RESTORE TEST CLEANUP PASSED`가 출력됐으며, 기존 Mastodon Compose의 `db`, `redis`, `web`, `sidekiq`, `streaming` 다섯 컨테이너는 모두 `healthy`였습니다.
 
 ## 공개 문서에는 넣지 않을 내용
 
