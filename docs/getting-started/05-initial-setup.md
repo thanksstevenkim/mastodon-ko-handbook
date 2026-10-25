@@ -14,6 +14,27 @@
 
 **기존 서버를 재설치하는 상황이라면 이 문서의 신규 설치 절차를 사용하지 마세요.** 먼저 백업·복구·업그레이드 문서를 확인해야 합니다.
 
+## 실측 사례: 전용 PostgreSQL 역할 및 DB 생성 (2026-10-25)
+
+**검증 상태: Docker Compose로 실행한 PostgreSQL에서 전용 역할·DB 생성과 SQL 연결까지 검증. Rails 마이그레이션 및 서비스 전체 기동은 아직 미검증.**
+
+격리된 UTM ARM64 실험 VM에서 공식 Mastodon `v4.7.3` Compose의 `db`와 `redis`가 `healthy`인 상태를 확인하고 다음을 실행했습니다.
+
+```bash
+sudo docker compose exec -T db psql -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+CREATE ROLE mastodon LOGIN;
+CREATE DATABASE mastodon_production OWNER mastodon;
+SQL
+
+sudo docker compose exec -T db \
+  psql -U mastodon -d mastodon_production \
+  -c 'SELECT current_database(), current_user;'
+```
+
+`CREATE ROLE`, `CREATE DATABASE`가 출력됐고, SQL 결과의 `current_database`와 `current_user`는 각각 `mastodon_production`, `mastodon`이었습니다.
+
+**주의:** 이 명령은 **새 DB에 한 번만** 실행하는 초기화 예시입니다. 역할이나 DB가 이미 있다면 재실행 시 오류가 발생할 수 있으며, 운영 DB를 초기화하려는 용도로 사용해서는 안 됩니다. 실험의 PostgreSQL 서비스는 공식 예제의 내부 네트워크 `trust` 인증을 사용하므로, 이 기록은 운영용 DB 인증 보안 가이드가 아닙니다. 비밀번호 기반 인증, 역할 권한, 백업 및 접속 제한은 공개 운영 환경에서 따로 검증해야 합니다.
+
 ## 1. 환경변수 파일을 준비하기
 
 Mastodon은 환경변수를 통해 설정됩니다. 공식 저장소의 `.env.production.sample`은 완성된 서버 설정이 아니라 **값을 채워야 하는 예시**입니다. 샘플에 켜져 있는 선택적 기능(예: Elasticsearch나 S3)을 사용하지 않는다면 해당 옵션을 명시적으로 꺼야 합니다.
