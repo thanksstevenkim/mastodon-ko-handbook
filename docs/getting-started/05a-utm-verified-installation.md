@@ -218,6 +218,7 @@ Sidekiq에서 작업 완료 로그가 있다는 사실은 **외부 연합 서버
 - [03. 도메인·DNS·HTTPS](03-domain-and-dns.md)
 - [04. Docker Compose 구성](04-docker-compose.md)
 - [05. 최초 설치와 설정](05-initial-setup.md)
+- [05B. 신규 설치 비밀키·PostgreSQL SCRAM 인증 안전화 실험](05b-secure-configuration-lab.md) — **신규 VM 미검증 설계**
 - [06. 첫날 운영 점검](06-first-day-checklist.md)
 - [백업 및 실제 복원 검증](../operations/backup-readiness.md)
 - [독립 VM 전체 복구와 재부팅 검증](../operations/disaster-recovery-utm.md)
