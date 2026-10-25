@@ -106,9 +106,26 @@ curl -fsS --max-time 10 http://127.0.0.1:4000/api/v1/streaming/health
 
 **추가 Health 재검증:** 약 3분 뒤 `sudo docker compose ps`에서 **DB·Redis·Web·Sidekiq·Streaming 5개가 모두 `healthy`**로 전환됐고 Web/Streaming Health가 각각 다시 `OK`를 반환했습니다. 단, Sidekiq의 실제 비동기 작업 실행·SMTP·브라우저 기능은 별도 테스트가 필요합니다.
 
-**관리자 계정 생성은 진행 중:** `bin/tootctl accounts create labadmin --email labadmin@mastodon.test --confirmed --approve --role Owner` 실행은 종료 코드 **1**을 반환했습니다. 오류 출력을 권한 `600` 파일에 보존했고 아직 원인 분석 전입니다. **사용자 생성 성공으로 기록하지 않습니다.**
+**관리자 생성 관련 실패와 해결:** 최초 계정 생성은 `bin/tootctl accounts create labadmin --email labadmin@mastodon.test --confirmed --approve --role Owner`에서 종료 코드 **1**을 반환했습니다. 오류 출력의 `Failure/Error: email` 및 `unreachable`을 확인했고, `accounts`와 `users`에 해당 사용자 기록이 없음을 SQL로 확인한 뒤 **일회성 생성 컨테이너에만** `EMAIL_DOMAIN_ALLOWLIST=mastodon.test`를 적용해 재시도했습니다. 재시도는 종료 코드 **0**으로 성공했고, SQL에서 `labadmin`의 역할 `Owner`, `approved=true`, `confirmed_at IS NOT NULL=true`를 확인했습니다. 비밀번호가 저장된 출력 파일은 권한 `600`으로 보관했으며 **비밀번호 값은 문서에 남기지 않습니다.**
 
 **검증 경계:** `OK`는 웹/스트리밍 HTTP 처리의 최소 동작 증거입니다. 비동기 큐 작업, 브라우저의 HTTPS 로그인, 계정 생성·게시·업로드·연합 기능은 아직 별도로 확인해야 합니다. 공식 Compose의 Web·Streaming 바인딩은 VM의 `127.0.0.1`에 한정되어 있으며 외부 접근을 위해 임의로 `0.0.0.0`으로 변경하지 않습니다.
+
+### 테스트용 이메일 도메인 검증 실패의 주의사항
+
+이메일 확인 메일을 생략하는 `--confirmed` 옵션은 이메일 DNS 검증 자체를 무조건 생략하지 않습니다. 외부 DNS에서 이메일을 수신하지 않는 `.test` 도메인을 계정에 사용했으므로 주소 연결 가능성 검사에서 `unreachable` 오류가 발생했습니다.
+
+해당 **격리된 로컬 실험 환경에서만** 다음과 같이 계정 생성 작업에 일회성 허용 목록을 전달했습니다.
+
+```bash
+sudo docker compose run --rm --no-deps \
+  -e EMAIL_DOMAIN_ALLOWLIST=mastodon.test \
+  web bin/tootctl accounts create labadmin \
+  --email labadmin@mastodon.test --confirmed --approve --role Owner
+```
+
+**명령 출력에 새 계정의 임시 비밀번호가 포함됩니다.** 실행 시에는 권한 `600`의 **호스트 측 비공개 파일로 출력을 리디렉션하고**, 출력 원문을 게시하거나 공유하지 마세요. 위 예제는 동작 원리를 보여주는 명령이므로 비밀번호 보관과 기존 사용자 중복 확인 절차는 별도로 갖춰야 합니다.
+
+`EMAIL_DOMAIN_ALLOWLIST`를 서비스 전체에 무조건 적용하거나 운영 환경의 무효한 메일 주소를 허용하는 방식으로 일반화하지 않습니다. 공개 서버에서는 정상적으로 수신 가능한 이메일과 실제 도메인 검증을 사용해야 합니다. **관리자 계정 생성 완료가 로그인·게시·메일 발송의 성공을 의미하지는 않습니다.**
 
 ## 1. 환경변수 파일을 준비하기
 
