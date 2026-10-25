@@ -48,6 +48,22 @@ curl -I --max-time 10 https://social.example.com/
 
 위 명령은 HTTP 헤더만 확인합니다. **정상 로그인, 미디어 업로드, 연합 송수신이 된다는 의미는 아닙니다.** 실제 도메인으로 바꿔서 사용하세요.
 
+## 실측 사례: UTM 로컬 HTTPS 프록시용 Caddy 설치 (2026-10-25)
+
+**검증 상태: Caddy 설치 및 systemd 서비스 실행 확인. `mastodon.test` 리버스 프록시 설정·로컬 인증서 발급·맥북 브라우저 접속은 아직 미검증.**
+
+Mastodon 4.7.3의 Web·Sidekiq·Streaming을 포함한 핵심 컨테이너 다섯 개가 `healthy`이고 Web·Streaming Health가 각각 `OK`인 UTM Ubuntu 24.04.5 ARM64 VM에서 로컬 HTTPS 프록시를 준비했습니다.
+
+- VM의 DHCP 주소: `192.168.64.4/24` (실험 당시 값이며 고정 IP가 아님)
+- 설치 전 `ss -ltnp`에서 호스트 TCP 80/443 포트에 바인딩된 서비스 없음
+- Caddy 공식 안정 버전 APT 저장소를 등록한 뒤 `caddy` ARM64 패키지 설치
+- `caddy version`: `v2.11.7`
+- `systemctl is-active caddy`: `active`
+
+이 실험에서는 외부 공개용 TLS 인증서 대신 Caddy의 **`tls internal` 로컬 인증기관**을 사용할 계획입니다. 이 인증기관을 클라이언트의 신뢰 저장소에 등록하는 작업에는 해당 클라이언트에 대한 신뢰 권한이 수반되므로, 루트 인증서를 검증한 다음 필요한 장치에서만 적용해야 합니다.
+
+`mastodon.test`는 예약된 테스트 도메인이므로 공인 DNS·Let's Encrypt·실제 연합 통신을 전제로 하지 않습니다. 공개 서버에서 `LOCAL_DOMAIN`을 선택하고 HTTPS를 설정하는 절차와는 구분하세요.
+
 ## 메일은 별도 준비 항목
 
 Mastodon은 계정 확인, 알림, 비밀번호 복구 등에 메일 발송이 필요합니다. 운영 초기부터 **신뢰할 수 있는 SMTP 제공자**를 준비하는 편이 좋습니다.
