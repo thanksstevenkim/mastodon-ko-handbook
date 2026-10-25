@@ -55,6 +55,21 @@ sudo docker buildx imagetools inspect ghcr.io/mastodon/mastodon-streaming:v4.7.3
 
 **결론:** Web/Sidekiq와 Streaming 이미지 모두 ARM64 매니페스트가 존재합니다. 이는 **아키텍처 배포 지원 확인**이지 이미지 pull, DB 연결, 실행 및 전체 Mastodon 서비스 검증이 아닙니다. PostgreSQL·Redis 이미지도 실제 사용하는 태그 기준으로 별도 검증해야 합니다.
 
+### 공식 소스 및 PostgreSQL·Redis ARM64 지원 확인
+
+동일한 실험 VM에서 Mastodon 공식 `v4.7.3` 태그를 shallow clone한 후, `git describe --tags --exact-match`로 `v4.7.3`을 확인했습니다. 체크아웃된 커밋은 `8ff11c2bb7b9f0714e947b10fa3629c6542c7121`이고 `docker-compose.yml`과 `.env.production.sample` 파일이 존재했습니다. 특정 태그를 체크아웃했기 때문에 Git의 `detached HEAD` 안내가 나타났으며 이는 오류가 아닙니다.
+
+다음 읽기 전용 명령으로 공식 DB/캐시 이미지의 아키텍처를 조회했습니다.
+
+```bash
+sudo docker buildx imagetools inspect postgres:14-alpine
+sudo docker buildx imagetools inspect redis:7-alpine
+```
+
+두 태그 모두 `linux/arm64/v8` 플랫폼이 출력됐습니다. 출력에 함께 표시된 `unknown/unknown`은 추가 매니페스트 항목일 수 있으며, ARM64 지원 자체가 누락됐다는 뜻은 아닙니다.
+
+**검증 경계:** 위 결과는 공식 소스 파일의 존재와 이미지 매니페스트 호환성 확인입니다. PostgreSQL·Redis의 컨테이너 기동·영속성, Mastodon DB 초기화, Web·Sidekiq·Streaming 실행 검증은 아직 별도로 수행해야 합니다.
+
 실험에서는 `sudo docker`를 사용했습니다. 일반 계정을 `docker` 그룹에 넣으면 사실상 호스트의 강력한 관리자 권한을 가지므로 편의를 위해 무조건 추가하지 않습니다.
 
 ## 기본 서비스와 접속 범위
