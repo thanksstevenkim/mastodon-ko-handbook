@@ -158,6 +158,18 @@ WHERE account_id = (
 
 실측 `local_statuses`는 **1**이었습니다. 이 결과는 계정과 연결된 게시물 데이터의 저장을 뒷받침합니다. **미디어 첨부·백그라운드 작업·외부 연합 전송의 성공 증거는 아닙니다.**
 
+## 실측 사례: 로컬 이미지 저장 및 Sidekiq 실행 확인 (2026-10-25)
+
+**검증 상태: JPEG 미디어 첨부의 PostgreSQL 기록·처리 완료 상태, 로컬 파일 생성 및 Sidekiq 실행 로그 확인. 재시작 후 영속성·브라우저 새로고침 표시·외부 연합 통신은 아직 미검증.**
+
+Safari에서 실험용 JPEG 이미지를 게시한 뒤 `labadmin` 계정의 `media_attachments`를 조회했습니다. 미디어 레코드 1건, `file_content_type=image/jpeg`, `file_file_size=18998`바이트, 유효한 `status_id`, `processing=2`를 확인했습니다. Mastodon 4.7.3의 `app/models/media_attachment.rb`에서 `enum :processing, { queued: 0, in_progress: 1, complete: 2, failed: 3 }`이므로 **`processing=2`는 처리 완료 상태**입니다.
+
+`public/system`에는 파일 **2개**, 사용량 **80KB**가 확인됐고 최상위 디렉터리 권한은 `991:991 / 755`였습니다. 이는 로컬 미디어 파일 저장이 이루어졌다는 증거입니다. 이 단계에서는 개별 파일 내용이나 원본·썸네일 관계까지 식별하지 않았습니다.
+
+Sidekiq 컨테이너는 약 35분 가동 후에도 `healthy`였습니다. 로그에서 `TriggerWebhookWorker`, `DistributionWorker`, `ActivityPub::DistributionWorker`, `LinkCrawlWorker`, `PushUpdateWorker`와 예약 작업의 `start` 후 `done` 기록을 확인했습니다. **Sidekiq가 실제로 작업을 처리한 증거이지만, 특정 이미지 처리 작업과의 일대일 대응이나 외부 연합 전달의 성공을 의미하지 않습니다.**
+
+실험자는 다음 단계에서 `docker compose stop`과 `docker compose up -d` 후 DB/미디어 영속성과 브라우저 표시를 검증할 예정입니다. **현재 단계에서 완료로 기록하지 않습니다.** 볼륨 삭제 옵션 `down -v`, `prune`, `rm -rf` 등은 사용하지 않습니다.
+
 ## 1. 환경변수 파일을 준비하기
 
 Mastodon은 환경변수를 통해 설정됩니다. 공식 저장소의 `.env.production.sample`은 완성된 서버 설정이 아니라 **값을 채워야 하는 예시**입니다. 샘플에 켜져 있는 선택적 기능(예: Elasticsearch나 S3)을 사용하지 않는다면 해당 옵션을 명시적으로 꺼야 합니다.
