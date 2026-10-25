@@ -55,13 +55,49 @@ UTM Ubuntu 24.04.5 ARM64의 Mastodon 4.7.3 로컬 실험 환경에서 백업 작
 
 또한 macOS의 `mastodon.test` 인증서 공개 루트 지문이 VM의 공개 루트 지문과 일치함을 확인했고 macOS의 시스템 기본 TLS 신뢰 설정을 통한 `curl https://mastodon.test/health` 응답이 `OK`였습니다. 이는 별도 HTTPS 접속 검증이며 백업 복원 검사는 아닙니다.
 
+## 실측 사례: 암호화 백업에서 격리된 PostgreSQL 14로 실제 복원 (2026-10-25)
+
+**검증 상태: Checkpoint 20 통과 — AES-256 암호화 백업을 GPG로 복호화하고 PostgreSQL 커스텀 덤프를 임시 DB로 복원한 뒤 계정·게시물·첨부 레코드를 SQL로 조회해 확인. 전체 Mastodon 서비스 복구, 미디어 파일 복원, 완전 분리된 VM 복구는 아직 미검증.**
+
+먼저 앞서 사용한 **평문 스테이징 디렉터리가 이미 없음**을 확인했습니다. 운영 중인 `mastodon_production`을 건드리지 않고, `postgres:14-alpine` 이미지로 임시 컨테이너 `mastodon-lab-pg-restore-check`를 만들었습니다. `--network none`, `--tmpfs /var/lib/postgresql/data:rw,nosuid,nodev,size=512m`, `--rm`을 사용해 네트워크 접속과 호스트 디스크 저장을 차단했습니다. `POSTGRES_HOST_AUTH_METHOD=trust`는 **외부 네트워크가 없는 이 일회성 검증 컨테이너에만** 적용했습니다.
+
+```bash
+# 다음은 검증된 실행의 핵심 명령 구조로, 기존 컨테이너 존재 여부를 먼저 검사합니다.
+sudo docker run -d --rm \
+  --name mastodon-lab-pg-restore-check \
+  --network none \
+  --tmpfs /var/lib/postgresql/data:rw,nosuid,nodev,size=512m \
+  -e POSTGRES_HOST_AUTH_METHOD=trust \
+  -e POSTGRES_USER=restorecheck \
+  -e POSTGRES_DB=mastodon_restore \
+  postgres:14-alpine
+```
+
+`pg_isready -U restorecheck -d mastodon_restore`가 `accepting connections`를 반환했습니다. GPG 비밀번호는 비공개 터미널에서 숨김 입력으로 받았고, 파이프라인으로 암호화 아카이브 안의 `db.dump`를 추출하여 **별도 임시 컨테이너에만** 복원했습니다.
+
+```bash
+# archive와 passphrase는 사전에 안전하게 준비한 변수입니다.
+# 비밀번호를 파일이나 GitHub에 저장하지 마세요.
+gpg --batch --pinentry-mode loopback --passphrase-fd 3 \
+    --no-symkey-cache --decrypt "$archive" \
+    3< <(printf '%s\n' "$passphrase") \
+  | tar -xzOf - db.dump \
+  | sudo docker exec -i mastodon-lab-pg-restore-check \
+      pg_restore -U restorecheck -d mastodon_restore \
+        --no-owner --no-acl --exit-on-error
+```
+
+실측 결과 `Restore Command PASSED`가 출력됐고, 복원된 DB에서 `labadmin` 로컬 계정 **1개**, `statuses` **2건**, `media_attachments` **1건**을 조회했습니다. 원본 실험 DB에서 이전에 확인한 개수와 일치했습니다.
+
+**범위와 정리:** `--rm` 컨테이너는 `docker stop mastodon-lab-pg-restore-check`로 정지하면 임시 DB도 함께 삭제됩니다. 이 정리는 **복원 테스트 컨테이너에만** 적용해야 하며 기존 Mastodon Compose의 DB·Redis·Web·Sidekiq·Streaming 컨테이너를 중지하거나 삭제해서는 안 됩니다. 테스트 컨테이너의 삭제는 아직 이 단계의 실측 결과로 확인되지 않았습니다.
+
 ## 공개 문서에는 넣지 않을 내용
 
 실제 환경변수 파일, 자격증명, 복호화 키, 개인 계정 데이터, 접근 가능한 백업 경로·URL, 백업 원본 로그를 그대로 공개하지 않습니다. 예시에는 `YOUR_BACKUP_FILE`처럼 비밀이 아닌 자리표시자를 사용합니다.
 
 ## 아직 작성하지 않은 것
 
-이 문서에는 **실험용 암호화 백업 성공 기록**이 있지만, **검증된 독립 복원 절차와 복구 시간 목표**는 아직 없습니다. 운영 환경마다 스토리지·암호화·서비스 중지 방식이 다르므로 해당 절차는 별도의 테스트와 근거를 확보한 뒤 추가할 예정입니다.
+이 문서에는 **실험용 암호화 백업 생성 및 같은 VM의 격리된 PostgreSQL 임시 인스턴스에 대한 복원 성공 기록**이 있습니다. 그러나 **다른 VM에서의 전체 서비스 복구 절차와 복구 시간 목표**는 아직 검증되지 않았습니다. 운영 환경마다 스토리지·암호화·서비스 중지 방식이 다르므로 해당 절차는 별도의 테스트와 근거를 확보한 뒤 추가할 예정입니다.
 
 ### 근거 자료
 
