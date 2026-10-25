@@ -92,7 +92,50 @@ Safari 실험을 위해 Mac 사용자 인증서 신뢰 설정을 일시 추가�
 - 처음에는 홈 타임라인이 비어 있었습니다. 이 백업에는 Redis 상태가 없었으므로, DR 환경에서 `bin/tootctl feeds build labadmin`을 실행했고 `OK`를 확인했습니다.
 - Safari에서 **홈 타임라인이 정상 복구된 것**을 다시 확인했습니다.
 
-검증 후에는 사전에 보존한 Mac `/etc/hosts`를 원본과 대조해 복구했고, DR CA 인증서 및 신뢰 설정 제거 명령도 정상 종료됐습니다. 최종 hosts 항목은 원본 VM을 다시 가리키는 것으로 확인됐습니다. 다만 **원본 VM에 대한 Safari 재접속은 별도 검증하지 않았습니다.**
+검증 후에는 사전에 보존한 Mac `/etc/hosts`를 원본과 대조해 복구했고, DR CA 인증서 및 신뢰 설정 제거 명령도 정상 종료됐습니다. 최종 hosts 항목은 원본 VM을 다시 가리키는 것으로 확인됐습니다. **후속 Checkpoint 22에서 원본 VM 대상 HTTPS `/health` HTTP 200을 다시 확인했습니다.** 다만 원본 VM에 대한 Safari 재로그인은 별도로 검사하지 않았습니다.
+
+## 6. Checkpoint 22 — 원본 접근 복귀와 DR 보관 상태 점검 (2026-10-26)
+
+Mac에서 `mastodon.test`의 hosts 매핑이 원본 실험 VM으로 돌아온 사실을 확인하고, 해당 주소를 대상으로 인증서 검증을 유지한 HTTPS `/health` 요청의 **HTTP 200** 응답을 확인했습니다. 인증서/hosts 원상복구의 명령 성공과 실제 원본 HTTPS 재접속을 구분하여 기록합니다.
+
+DR VM에서 읽기 전용으로 점검한 결과:
+
+| 항목 | 관찰 결과 |
+| --- | --- |
+| PostgreSQL·Redis·Web·Sidekiq·Streaming | 5개 Healthy |
+| Caddy | Running |
+| 핵심 5개 컨테이너 재시작 정책 | `always` |
+| Caddy 재시작 정책 | `unless-stopped` |
+| Docker 데몬 | `active`, 자동 시작 `enabled` |
+| `.env.production`, `db.dump`, `media.tar.gz`, DR Compose, DR Caddyfile | 각각 권한 `600` |
+| DR VM 디스크 여유 | 약 27 GiB |
+
+영속 저장 디렉터리의 호스트 표시 소유자에 `UNKNOWN`이 포함됐지만, 컨테이너 UID를 확인하거나 권한을 임의 변경하지 않았습니다. **복원된 PostgreSQL·Redis·미디어 저장 경로가 스테이징 디렉터리 안에 있으므로 디렉터리 전체를 삭제하면 안 됩니다.**
+
+## 7. Checkpoint 23 — 재부팅 후 자동 복구·지속성 시험 (2026-10-26)
+
+DR VM 재부팅 이후 Docker Compose를 수동으로 다시 기동하지 않고 상태를 검사했습니다. 첫 검사에서는 PostgreSQL의 헬스 상태가 `starting`이어서 `set -e` 스크립트가 종료됐습니다. 즉시 장애로 판정하거나 컨테이너를 재시작하지 않고, 후속 검사에서 준비 상태가 완료되는지 확인했습니다.
+
+| 항목 | 재부팅 후 확인 결과 |
+| --- | --- |
+| Docker | `active` |
+| PostgreSQL 14 | `healthy` |
+| Redis 7 | `healthy` 및 `PONG` |
+| Web | `healthy` |
+| Sidekiq | `healthy` |
+| Streaming | `healthy` |
+| Caddy | `running` |
+| PostgreSQL 레코드 | 계정 2 / 게시물 2 / 미디어 1 |
+| Redis 홈 피드 | `feed:home:<account_id>` 유형 `zset`, 항목 2개 |
+| Mac → DR HTTPS `/health` | HTTP 200, `text/plain; charset=utf-8` |
+| Mac → DR HTTPS `/` | HTTP 200, `text/html; charset=utf-8` |
+| Mac → DR JPEG 원본 | HTTP 200, `image/jpeg` |
+
+HTTPS 검사는 Mac의 hosts 파일을 변경하지 않고 `curl --cacert`와 `--resolve`를 사용했습니다. 인증서 검증을 우회하는 `--insecure`는 사용하지 않았습니다. Redis 피드는 **재구축 명령을 재실행하지 않고** 기존 정렬 집합의 2개 항목이 보존된 것을 확인했습니다. 웹 브라우저의 사용자 로그인과 홈 피드 렌더링은 **재부팅 전에** 이미 검증했으며, 재부팅 후에는 위의 HTTP·DB·Redis 저장 상태를 별도로 검증했습니다.
+
+명령 작성 시 macOS `zsh`의 읽기 전용 `status`, `PATH`에 연결되는 `path` 특수 변수명 때문에 검사 스크립트가 중단된 사례가 있었습니다. 임의 변수로 사용하지 않고 `http_code`, `endpoint` 같은 이름을 사용해 재실행한 뒤 성공 결과를 확인했습니다.
+
+**Checkpoint 23 판정:** 실험용 DR VM의 Docker 자동 시작, 5개 핵심 서비스 헬스체크, Caddy 실행, DB 레코드·Redis 홈 피드 보존 및 HTTPS/JPEG 접근 **재부팅 후 검증 통과**. 운영 환경의 RTO/RPO를 측정했다는 뜻은 아닙니다.
 
 ## 검증 범위의 한계와 후속 조치
 
@@ -100,7 +143,7 @@ Safari 실험을 위해 Mac 사용자 인증서 신뢰 설정을 일시 추가�
 2. Redis 스냅샷, Sidekiq 대기 작업, 세션 상태 등은 복구하지 않았습니다. 홈 피드 재구축은 Redis 전체 상태 복원과 다릅니다.
 3. 외부 ActivityPub 전송, SMTP, 연합 상호작용, 백업 자동화와 복구 시간 목표(RTO/RPO)는 미검증입니다.
 4. 백업에 비밀 설정값이 들어 있으므로 **DR VM 스테이징 평문 파일과 로컬 CA 관련 자료를 안전하게 관리**해야 합니다. 공개 GitHub에 업로드하지 않습니다.
-5. DR VM의 장기 지속 운영, 재부팅 후 자동 복구 및 원본 VM으로의 Mac 접속 재확인은 이번 Checkpoint 21의 결과에 포함하지 않습니다.
+5. 원본 VM의 HTTPS 재접속과 DR VM 재부팅 후 자동 복구는 후속 Checkpoint 22~23에서 추가 검증했습니다. 장기 지속 운영, 재부팅 후 Safari 재로그인 및 운영 환경의 복구 시간 목표는 별도 검증이 필요합니다.
 
 **판정:** PostgreSQL 데이터·로컬 미디어·설정·Mastodon 5개 서비스·Caddy HTTPS·관리자 로그인·게시물·이미지·홈 피드에 한하여 **독립 VM 재해 복구 실험 통과**.
 
