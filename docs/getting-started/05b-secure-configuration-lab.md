@@ -1,6 +1,6 @@
 # 05B. 신규 설치의 비밀키·PostgreSQL 인증 안전화 실험
 
-> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·독립 Mac HTTPS·Safari 로그인·게시물/미디어 저장·재부팅 후 자동 복구 및 Safari 재검증·Mac 임시 설정 정리·암호화 백업 생성·Mac 사본 무결성·독립 복원 VM 수신·Docker 설치·격리 네트워크·Compose 정적 정책·ARM64 이미지 준비 검증 통과 (Checkpoint 24-2~24-16L-1, 2026-10-26).** 새 `mastodon-install-lab`에서 PostgreSQL SCRAM 인증과 Mastodon 주요 기능·재부팅 보존을 검증했으며, Mac의 임시 설정 제거와 암호화 백업 복호화 및 전송 해시 일치를 확인했습니다. 별도 `mastodon-restore-lab`(192.168.64.7)에서 Docker, 게이트웨이 없는 내부 네트워크, Compose 정책, 필요한 네 종류 ARM64 이미지 확보까지 검증했습니다. **독립 VM의 암호화 백업 추출·덤프 판독·신규 PostgreSQL 14 클러스터의 SCRAM 호스트 인증 및 격리 기동은 성공했으며, 앱 DB/역할 생성·앱 TCP 비밀번호 검사까지 성공했고, 실제 데이터베이스 복원은 성공했으며, 미디어 파일과 격리 Redis 기동·DB/Redis 내부 연결 검사까지 성공했으며, Web 로그인·이미지 표시·Sidekiq 검증은 아직 미완료**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
+> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·독립 Mac HTTPS·Safari 로그인·게시물/미디어 저장·재부팅 후 자동 복구 및 Safari 재검증·Mac 임시 설정 정리·암호화 백업 생성·Mac 사본 무결성·독립 복원 VM 수신·Docker 설치·격리 네트워크·Compose 정적 정책·ARM64 이미지 준비 검증 통과 (Checkpoint 24-2~24-16L-2, 2026-10-26).** 새 `mastodon-install-lab`에서 PostgreSQL SCRAM 인증과 Mastodon 주요 기능·재부팅 보존을 검증했으며, Mac의 임시 설정 제거와 암호화 백업 복호화 및 전송 해시 일치를 확인했습니다. 별도 `mastodon-restore-lab`(192.168.64.7)에서 Docker, 게이트웨이 없는 내부 네트워크, Compose 정책, 필요한 네 종류 ARM64 이미지 확보까지 검증했습니다. **독립 VM의 암호화 백업 추출·덤프 판독·신규 PostgreSQL 14 클러스터의 SCRAM 호스트 인증 및 격리 기동은 성공했으며, 앱 DB/역할 생성·앱 TCP 비밀번호 검사까지 성공했고, 실제 데이터베이스 복원은 성공했으며, 미디어 복원·격리 Redis 내부 연결 및 앱 환경 정적 검사까지 성공했으며, Web 로그인·이미지 표시·Sidekiq 검증은 아직 미완료**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
 
 [← 05A. UTM 설치 실측](05a-utm-verified-installation.md) · [05. 최초 설치](05-initial-setup.md) · [핸드북 목차](../../README.md)
 
@@ -373,7 +373,19 @@ macOS의 원본 암호화 백업 **`mastodon-install-20261026T022203Z.tar.gpg`**
 
 **판정의 범위:** 격리 네트워크의 내부 서비스 TCP 및 시험한 외부 TCP 목적지 차단, Redis 자체 헬스체크를 검증했습니다. 이후 원본 앱 설정의 DB·Redis 접속 값과 SMTP·외부 스토리지·연합 기능 설정을 **비밀값 노출 없이 정적 점검**한 다음 Web 기동 여부를 결정합니다.
 
-## 36. 아직 '통과'라고 선언하면 안 되는 항목
+## 36. Checkpoint 24-16L-2 복원 앱 환경 정적 감사
+
+복원 VM에서 `recovery-payload/.env.production`과 작업 디렉터리 `.env.production`의 내용·권한이 일치하는지 검증하고 PostgreSQL·Redis 컨테이너가 `healthy`, 오직 `mastodon-restore-airgap`에 연결되고 호스트 공개 포트가 없는지 재확인했습니다. 앱 컨테이너는 0개였습니다.
+
+첫 감사 명령은 과거 버전의 `OTP_SECRET` 변수를 필수로 검사해 **`ABORT: Missing application key OTP_SECRET`**에서 중단됐습니다. Mastodon **v4.4.0 이후 해당 레거시 환경변수는 제거**됐으므로, v4.7.3 공식 환경변수 샘플·변경 기록을 확인해 감사 조건에서 삭제했습니다. 키를 새로 생성하거나 원본 비밀 파일을 변경하지 않았습니다.
+
+수정된 읽기 전용 감사는 **DB 설정, Redis 설정, `SECRET_KEY_BASE`·VAPID 키 쌍·Active Record 암호화 키 3종의 존재**를 모두 검증했습니다. 외부 서비스 설정 현황은 **SMTP 0/3, S3 0/3, Elasticsearch 0/3**, `S3_ENABLED=FALSE`, `ES_ENABLED=FALSE`로 확인됐습니다. `DISABLE_FEDERATION`은 **`NOT SET/OTHER`**였으므로 연합 기능이 설정으로 비활성화됐다고 주장하지 않습니다. 기존 Docker 네트워크 제한과 앱 서비스 기동 분리 정책은 유지됩니다. 암호·개인키 값은 출력하지 않았습니다.
+
+최종 출력은 **`CHECKPOINT 24-16L-2 ENVIRONMENT AUDIT PASSED`**이며 Web·Sidekiq·Streaming은 실행하지 않았습니다.
+
+**다음 단계:** 원본 비밀값을 유지한 복원용 Web 전용 환경 오버라이드 및 Compose 정적 정책을 검사한 뒤 제한적으로 Web만 기동합니다.
+
+## 37. 아직 '통과'라고 선언하면 안 되는 항목
 
 - 특정 Sidekiq 개별 작업 성공 여부의 독립적 검증
 - **독립 VM 복원 및 앱 계정 로그인 검증**
