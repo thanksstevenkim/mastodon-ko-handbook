@@ -48,76 +48,9 @@ curl -I --max-time 10 https://social.example.com/
 
 위 명령은 HTTP 헤더만 확인합니다. **정상 로그인, 미디어 업로드, 연합 송수신이 된다는 의미는 아닙니다.** 실제 도메인으로 바꿔서 사용하세요.
 
-## 실측 사례: UTM 로컬 HTTPS 프록시용 Caddy 설치 (2026-10-25)
+## 실험 기록은 별도로 보기
 
-**검증 상태: Caddy 설치 및 systemd 서비스 실행 확인. `mastodon.test` 리버스 프록시 설정·로컬 인증서 발급·맥북 브라우저 접속은 아직 미검증.**
-
-Mastodon 4.7.3의 Web·Sidekiq·Streaming을 포함한 핵심 컨테이너 다섯 개가 `healthy`이고 Web·Streaming Health가 각각 `OK`인 UTM Ubuntu 24.04.5 ARM64 VM에서 로컬 HTTPS 프록시를 준비했습니다.
-
-- VM의 DHCP 주소: `192.168.64.4/24` (실험 당시 값이며 고정 IP가 아님)
-- 설치 전 `ss -ltnp`에서 호스트 TCP 80/443 포트에 바인딩된 서비스 없음
-- Caddy 공식 안정 버전 APT 저장소를 등록한 뒤 `caddy` ARM64 패키지 설치
-- `caddy version`: `v2.11.7`
-- `systemctl is-active caddy`: `active`
-
-이 실험에서는 외부 공개용 TLS 인증서 대신 Caddy의 **`tls internal` 로컬 인증기관**을 사용할 계획입니다. 이 인증기관을 클라이언트의 신뢰 저장소에 등록하는 작업에는 해당 클라이언트에 대한 신뢰 권한이 수반되므로, 루트 인증서를 검증한 다음 필요한 장치에서만 적용해야 합니다.
-
-`mastodon.test`는 예약된 테스트 도메인이므로 공인 DNS·Let's Encrypt·실제 연합 통신을 전제로 하지 않습니다. 공개 서버에서 `LOCAL_DOMAIN`을 선택하고 HTTPS를 설정하는 절차와는 구분하세요.
-
-## 실측 사례: Caddy 로컬 HTTPS 프록시 검사 통과 (2026-10-25)
-
-**검증 상태: UTM VM 내부에서 `mastodon.test`에 대한 Caddy TLS 설정/인증서 검증 및 Web·Streaming HTTPS Health 응답 확인. 맥북 Safari 접근은 아직 미검증.**
-
-기본 Caddyfile을 백업하고, 아래 형태의 **실험 VM 전용** 설정을 적용했습니다.
-
-```caddyfile
-{
-    auto_https disable_redirects
-}
-
-https://mastodon.test {
-    bind 192.168.64.4
-    tls internal
-
-    @streaming path /api/v1/streaming /api/v1/streaming/*
-
-    handle @streaming {
-        reverse_proxy 127.0.0.1:4000
-    }
-
-    handle {
-        reverse_proxy 127.0.0.1:3000
-    }
-}
-```
-
-- `sudo caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile` → `Valid configuration`
-- `sudo systemctl reload caddy` 이후 `systemctl is-active caddy` → `active`
-- TCP 443 리스너 → `192.168.64.4:443`
-- 로컬 CA 공개 인증서 `/var/lib/caddy/.local/share/caddy/pki/authorities/local/root.crt` 존재
-- VM 내부에서 `--resolve mastodon.test:443:192.168.64.4 --cacert <root.crt 경로>`를 사용한 HTTPS `/health`, `/api/v1/streaming/health` 모두 → `OK`
-
-`caddy validate`는 설정 들여쓰기 관련 포맷 경고를 보여주었지만 구문 검사는 통과했습니다. `--cacert` 검증은 TLS 체인을 검증한 결과이며, 단순한 `-k` 인증서 무시 테스트가 아닙니다.
-
-**주의:** `192.168.64.4`는 실험 당시 DHCP 주소입니다. `bind` 설정에 고정되므로 주소 변경 시 수정해야 합니다. macOS 브라우저에서 사용하려면 macOS의 이름 해석과 **공개 루트 CA 인증서 신뢰 설정**이 추가로 필요하며, 개인키를 외부로 복사하면 안 됩니다. 별도 로컬 CA를 맥북 시스템 신뢰 저장소에 추가하면 그 CA가 발급한 다른 인증서까지 신뢰하게 되는 보안 영향을 이해해야 합니다. 로컬에서 확인된 HTTPS 성공을 실제 공개 DNS·ACME 인증서 발급·연합 송수신 성공으로 오해하지 마세요.
-
-## 실측 사례: macOS 호스트의 로컬 HTTPS 연결 성공 (2026-10-25)
-
-**검증 상태: macOS에서 UTM VM에 접속하는 로컬 이름 해석 및 Caddy 로컬 CA를 명시한 HTTPS Web Health 응답 확인. Safari에서 시스템 신뢰 인증서를 통한 UI 접속/로그인은 아직 미검증.**
-
-macOS 터미널에서 `scp`를 실행해 Ubuntu VM의 `/home/steven/mastodon-lab-root.crt`를 맥북의 `~/Downloads/mastodon-lab-root.crt`로 복사했습니다. 인증서 파일 크기는 627바이트이며 `openssl x509 -noout -subject -fingerprint -sha256`로 확인한 공개 루트 인증서의 subject는 `Caddy Local Authority - 2026 ECC Root`였습니다. 사용자가 인증서 복사를 성공시킨 후 원격 VM과 Mac 간 지문 일치 여부를 확인하도록 안내했지만 이 대화의 **맥북 로그만으로 양측 지문 대조를 독립적으로 입증할 수는 없습니다.**
-
-맥북의 `/etc/hosts`에 `192.168.64.4    mastodon.test`를 설정하고 `dscacheutil`을 이용해 캐시를 갱신한 뒤, `dscacheutil -q host -a name mastodon.test`에서 해당 IP가 반환되는 것을 확인했습니다.
-
-```bash
-curl -fsS --noproxy '*' \
-  --cacert ~/Downloads/mastodon-lab-root.crt \
-  https://mastodon.test/health
-```
-
-실측 응답은 `OK`였습니다. 이는 Mac에서 로컬 CA 인증서를 명시적으로 지정해 Caddy가 제공하는 Mastodon Web의 HTTPS Health에 성공한 결과입니다. `-k`로 검증을 무시한 결과가 아닙니다.
-
-**남은 검증:** macOS 사용자 키체인에 로컬 CA를 신뢰 등록한 뒤 HTTPS Health와 Safari UI 로그인 확인, 실험 계정 비밀번호 변경, 실제 게시·미디어 업로드·Sidekiq 작업 검증. `/etc/hosts`와 사용자 신뢰 설정은 실험 종료 후 정리해야 합니다. **CA 개인키는 복사하지 않습니다.**
+실제 VM에서 관찰한 출력·중간 실패·재검증 기록은 [설치 실측 기록](../labs/early-install-notes-20261025.md)에 보존했습니다. **위 내용을 이해하고 아래 항목을 진행하는 데 해당 실험을 반복할 필요는 없습니다.**
 
 ## 메일은 별도 준비 항목
 

@@ -8,76 +8,9 @@
 
 Docker 컨테이너가 모두 실행 중이고 `healthy`라고 표시되어도, 이용자에게 보이는 기능이 모두 작동한다는 보장은 없습니다. 운영 시작 전에는 **인터넷 접속 → 계정·게시물 → 백그라운드 처리 → 연합 → 백업** 순서로 살펴봅니다.
 
-## 실측 사례: Mastodon 4.7.3 서비스 재시작 후 데이터 영속성 (2026-10-25)
+## 실험 기록은 별도로 보기
 
-**검증 상태: 통과 — 공식 Docker Compose의 DB·Redis·Web·Sidekiq·Streaming 5개 서비스를 `stop` 후 `up -d`하여 모두 다시 `healthy`에 도달했고, 게시물·미디어 DB 레코드 및 호스트 미디어 파일의 개수/체크섬이 재시작 전후 일치.**
-
-UTM Ubuntu 24.04.5 ARM64 로컬 설치(`mastodon.test`, PostgreSQL 14, Redis 7, Caddy)에서 재시작 전 다음을 기록했습니다.
-
-| 검사 항목 | 재시작 전 | 재시작 후 | 상태 |
-| --- | ---: | ---: | --- |
-| `labadmin` 소유 `statuses` | 2 | 2 | 일치 |
-| `labadmin` 소유 `media_attachments` | 1 | 1 | 일치 |
-| `processing = 2` (complete) 첨부 | 1 | 1 | 일치 |
-| `public/system` 일반 파일 | 2 | 2 | 일치 |
-| 미디어 파일 집합 SHA-256 | `904413ebbe429c124a22454d5802ef3ad67e62d2015c0b13c3afe9ce2a9b293f` | 동일 | 일치 |
-
-실행한 서비스 재시작 명령:
-
-```bash
-cd ~/mastodon-handbook-lab
-sudo docker compose stop
-sudo docker compose up -d
-sudo docker compose ps
-```
-
-다섯 컨테이너는 즉시 `health: starting`으로 나타났고, **재기동 약 32초 후** `db`, `redis`, `web`, `sidekiq`, `streaming` 모두 `healthy`로 전환됐습니다.
-
-DB 검사는 전후 같은 SQL로 수행했습니다.
-
-```sql
-SELECT
-  (SELECT COUNT(*) FROM statuses WHERE account_id = a.id) AS statuses,
-  (SELECT COUNT(*) FROM media_attachments WHERE account_id = a.id) AS media,
-  (SELECT COUNT(*) FROM media_attachments
-   WHERE account_id = a.id AND processing = 2) AS completed_media
-FROM accounts a
-WHERE a.username = 'labadmin' AND a.domain IS NULL;
-```
-
-파일 검사:
-
-```bash
-sudo find public/system -type f | wc -l
-sudo find public/system -type f -exec sha256sum {} + | LC_ALL=C sort | sha256sum
-```
-
-마지막 명령은 개별 파일의 해시와 **파일 경로 문자열**을 모아 다시 해싱하는 방식이므로 동일 경로에서의 전후 비교에 유효합니다. 절대적인 백업 무결성이나 파일시스템 전체 검증을 의미하지는 않습니다.
-
-**브라우저 재검증까지 통과:** 실험 담당자가 macOS Safari에서 `labadmin` 로그인 세션이 유지됐고, 기존 게시물 **2개**와 JPEG 첨부 이미지가 정상 표시되며, 새로고침 후에도 이미지가 표시된다고 확인했습니다. 따라서 **컨테이너 정상 재시작 이후 DB·미디어 영속성과 사용자 화면 재표시**까지 검증했습니다.
-
-**검증 경계:** 이 실험은 컨테이너의 정상 `stop` 및 재기동만 시험했습니다. 운영체제/VM 재부팅, 컨테이너 재생성, 디스크/볼륨 장애, 백업에서의 독립 복원은 **아직 미검증**입니다. `docker compose down -v` 및 저장 디렉터리 제거 명령은 실행하지 않았습니다.
-
-## 실측 사례: Ubuntu VM 재부팅 후 Mastodon 자동 복구 (2026-10-25)
-
-**검증 상태: 통과 — UTM Ubuntu 24.04.5 ARM64 VM을 재부팅한 후 Docker·Caddy 서비스가 `active`, Mastodon 공식 Compose의 다섯 서비스가 모두 `healthy`에 도달. Web·Streaming Health가 `OK`이고, macOS Safari에서 정상 접속 및 기존 게시물 표시를 확인.**
-
-이전 단계에서 Docker Compose 컨테이너의 정상 종료/재시작 및 DB·미디어 파일 영속성을 검증한 다음, 실험 VM의 **운영체제 재부팅** 시험을 수행했습니다. VM으로 SSH 재접속 후 다음 검사를 실행했습니다.
-
-```bash
-cd ~/mastodon-handbook-lab
-
-systemctl is-active docker caddy
-sudo docker compose ps
-curl -fsS --max-time 10 http://127.0.0.1:3000/health
-curl -fsS --max-time 10 http://127.0.0.1:4000/api/v1/streaming/health
-```
-
-실측 결과는 Docker와 Caddy 모두 `active`, Web·Streaming Health 모두 `OK`였습니다. 재부팅 후 약 19초에는 `db`, `redis`, `web`, `sidekiq`, `streaming`이 모두 `health: starting`이었지만, 약 45초 시점에는 **5개 모두 `healthy`**였습니다. 실험 담당자가 Mac Safari에서 Mastodon에 **정상 접속하고 기존 게시물이 그대로 표시됨**을 확인했습니다.
-
-**참고:** `docker compose ps`를 일반 사용자로 실행할 경우 `/var/run/docker.sock` 접근 권한 오류가 나타났지만, `sudo docker compose ps`로 정상 조회됐습니다. 이는 Docker 엔진이나 컨테이너의 장애가 아닙니다. Docker 그룹에 사용자를 추가하면 사실상 높은 시스템 권한이 부여되므로, 단지 오류를 없애기 위해 추가할 필요는 없습니다.
-
-**검증 경계:** VM 재부팅 후 기본 자동 복구와 브라우저 접근은 확인했지만, 이번 재부팅 시점에 파일 체크섬을 다시 비교하거나 이미지 새로고침 표시를 별도로 재검사한 기록은 없습니다. 컨테이너 **재생성**, 디스크 고장, PostgreSQL 백업 파일에서의 **독립 복구**도 아직 검증하지 않았습니다. 실제 SMTP 메일·외부 연합 송수신은 `mastodon.test` 로컬 실험 범위에 포함되지 않습니다.
+실제 VM에서 관찰한 출력·중간 실패·재검증 기록은 [설치 실측 기록](../labs/early-install-notes-20261025.md)에 보존했습니다. **위 내용을 이해하고 아래 항목을 진행하는 데 해당 실험을 반복할 필요는 없습니다.**
 
 ## 1. 구성과 서비스 확인
 
