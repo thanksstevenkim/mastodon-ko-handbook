@@ -1,6 +1,6 @@
 # 05B. 신규 설치의 비밀키·PostgreSQL 인증 안전화 실험
 
-> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·독립 Mac HTTPS·Safari 로그인·게시물/미디어 저장·재부팅 후 자동 복구 및 Safari 재검증·Mac 임시 설정 정리·암호화 백업 생성·Mac 사본 무결성·독립 복원 VM 신규 설치 및 암호화 사본 수신 검증 통과 (Checkpoint 24-2~24-16C, 2026-10-26).** 새 `mastodon-install-lab`에서 SCRAM TCP 인증, 계정·키, 초기 스키마, 서비스, Caddy HTTPS와 Mac 접근을 검증했습니다. **재부팅 후 Safari HTTPS 접근·관리자 재인증/세션·기존 게시물과 이미지 표시·관리자 대시보드 접근은 사용자의 정상 동작 보고**로 확인했습니다. DB·미디어·설정의 재부팅 후 보존과 Mac 임시 CA/hosts 정리, 암호화 백업 복호화 및 Mac 사본 해시 일치도 검사했습니다. 네 번째 별도 VM `mastodon-restore-lab`(192.168.64.7)에 백업을 전송하고 SHA-256 일치를 확인했습니다. **실제 독립 복원, 복원 환경의 네트워크 격리, Sidekiq 개별 작업 검증은 아직 미완료**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
+> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·독립 Mac HTTPS·Safari 로그인·게시물/미디어 저장·재부팅 후 자동 복구 및 Safari 재검증·Mac 임시 설정 정리·암호화 백업 생성·Mac 사본 무결성·독립 복원 VM 암호화 사본 수신 및 Docker 설치 검증 통과 (Checkpoint 24-2~24-16D, 2026-10-26).** 새 `mastodon-install-lab`에서 SCRAM TCP 인증, 계정·키, 초기 스키마, 서비스, Caddy HTTPS와 Mac 접근을 검증했습니다. **재부팅 후 Safari HTTPS 접근·관리자 재인증/세션·기존 게시물과 이미지 표시·관리자 대시보드 접근은 사용자의 정상 동작 보고**로 확인했습니다. DB·미디어·설정의 재부팅 후 보존과 Mac 임시 CA/hosts 정리, 암호화 백업 복호화 및 Mac 사본 해시 일치도 검사했습니다. 별도 VM `mastodon-restore-lab`(192.168.64.7)에 백업을 전송하여 해시를 확인하고 공식 Docker Engine·Compose를 설치했습니다. **실제 독립 복원, 복원용 네트워크 격리, Sidekiq 개별 작업 검증은 아직 미완료**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
 
 [← 05A. UTM 설치 실측](05a-utm-verified-installation.md) · [05. 최초 설치](05-initial-setup.md) · [핸드북 목차](../../README.md)
 
@@ -279,7 +279,13 @@ macOS의 원본 암호화 백업 **`mastodon-install-20261026T022203Z.tar.gpg`**
 
 **판정:** 암호화 아카이브는 원본 설치 VM → Mac → 독립 복원 VM의 각 파일 경로에서 전송 무결성이 확인됐습니다. 아직 **복호화·Docker 설치·DB 복원·원본 계정 로그인·외부 네트워크 격리**는 수행하지 않았습니다. 복원 전에는 발신 ActivityPub·SMTP 등 외부 통신을 차단할 네트워크 구성을 설계·검증해야 하며, 기존 VM 및 실운영 서버에 간섭하지 않아야 합니다.
 
-## 24. 아직 '통과'라고 선언하면 안 되는 항목
+## 24. Checkpoint 24-16D 독립 복원 VM Docker 설치
+
+전용 VM `mastodon-restore-lab`(`192.168.64.7`, Ubuntu 24.04 ARM64)에서 설치 전 Docker 관련 패키지 및 저장소·키 파일 부재를 확인했습니다. 공식 Docker Ubuntu 저장소의 GPG 공개키 지문 **`9DC858229FC7DD38854AE2D88D81803C0EBFCD88`**을 검증했고, Ubuntu Noble ARM64용 Docker Engine **29.9.2**, Compose **v5.6.1**, containerd **2.4.2** 설치가 완료됐습니다. `systemctl enable --now docker` 이후 데몬이 실행 중이었고 ARM64 `hello-world` 컨테이너가 성공적으로 실행되고 종료됐습니다. `docker ps -aq` 결과 복원 앱 컨테이너는 **0개**, 최종 출력은 **`CHECKPOINT 24-16D DOCKER INSTALLATION PASSED`**였습니다.
+
+**판정:** 복원 VM의 공식 Docker·Compose 설치 및 ARM64 컨테이너 작동을 검증했습니다. Docker 이미지 다운로드에는 인터넷이 사용됐지만, 이 시점까지 백업 복호화·DB 복원·Web·Sidekiq 실행은 하지 않았습니다. **Docker의 기본 네트워크는 외부 연결이 가능하므로, 실제 서비스 데이터 복원 전에 분리된 내부 전용 네트워크와 컨테이너별 연결 정책을 검증해야 합니다.** Docker 공식 문서에서는 내부 네트워크에도 호스트 게이트웨이 접속이 가능할 수 있다고 설명하므로 `internal: true`만으로 절대적인 완전 격리를 단정하지 않습니다.
+
+## 25. 아직 '통과'라고 선언하면 안 되는 항목
 
 - 특정 Sidekiq 개별 작업 성공 여부의 독립적 검증
 - **독립 VM 복원 및 앱 계정 로그인 검증**
