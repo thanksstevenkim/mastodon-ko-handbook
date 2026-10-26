@@ -1,6 +1,6 @@
 # 05B. 신규 설치의 비밀키·PostgreSQL 인증 안전화 실험
 
-> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·독립 Mac HTTPS·Safari 로그인·게시물/미디어 저장·재부팅 후 자동 복구 및 Safari 재검증·Mac 임시 설정 정리·암호화 백업 생성·Mac 사본 무결성·독립 복원 VM 수신·Docker 설치·격리 네트워크·Compose 정적 정책·ARM64 이미지 준비 검증 통과 (Checkpoint 24-2~24-16I, 2026-10-26).** 새 `mastodon-install-lab`에서 PostgreSQL SCRAM 인증과 Mastodon 주요 기능·재부팅 보존을 검증했으며, Mac의 임시 설정 제거와 암호화 백업 복호화 및 전송 해시 일치를 확인했습니다. 별도 `mastodon-restore-lab`(192.168.64.7)에서 Docker, 게이트웨이 없는 내부 네트워크, Compose 정책, 필요한 네 종류 ARM64 이미지 확보까지 검증했습니다. **독립 VM 내부의 암호화 백업 추출·PostgreSQL 덤프 판독은 성공했으며, 실제 DB 복원·Web/Sidekiq 기동·원본 계정 복구 시험은 아직 미완료**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
+> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·독립 Mac HTTPS·Safari 로그인·게시물/미디어 저장·재부팅 후 자동 복구 및 Safari 재검증·Mac 임시 설정 정리·암호화 백업 생성·Mac 사본 무결성·독립 복원 VM 수신·Docker 설치·격리 네트워크·Compose 정적 정책·ARM64 이미지 준비 검증 통과 (Checkpoint 24-2~24-16J-1, 2026-10-26).** 새 `mastodon-install-lab`에서 PostgreSQL SCRAM 인증과 Mastodon 주요 기능·재부팅 보존을 검증했으며, Mac의 임시 설정 제거와 암호화 백업 복호화 및 전송 해시 일치를 확인했습니다. 별도 `mastodon-restore-lab`(192.168.64.7)에서 Docker, 게이트웨이 없는 내부 네트워크, Compose 정책, 필요한 네 종류 ARM64 이미지 확보까지 검증했습니다. **독립 VM의 암호화 백업 추출·덤프 판독·신규 PostgreSQL 14 클러스터의 SCRAM 호스트 인증 및 격리 기동은 성공했으며, 앱 DB/역할 생성·실제 데이터 복원·원본 계정 복구 시험은 아직 미완료**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
 
 [← 05A. UTM 설치 실측](05a-utm-verified-installation.md) · [05. 최초 설치](05-initial-setup.md) · [핸드북 목차](../../README.md)
 
@@ -321,7 +321,15 @@ macOS의 원본 암호화 백업 **`mastodon-install-20261026T022203Z.tar.gpg`**
 
 **아직 확인하지 않은 항목:** 실제 PostgreSQL 복원, 계정 인증, 앱 컨테이너 실행. 이 단계에서 복원 컨테이너는 0개였으며, 추출된 민감 파일은 복원 VM 내부에만 보관합니다.
 
-## 30. 아직 '통과'라고 선언하면 안 되는 항목
+## 30. Checkpoint 24-16J-1 독립 복원 DB 새 클러스터 초기화
+
+`mastodon-restore-lab`에서 백업에서 추출한 `.env.postgres`, `.env.production` 및 커스텀 DB 덤프의 존재·권한과 격리 네트워크 정책을 검사했습니다. 신규 PostgreSQL 14용 디렉터리 및 작업 루트의 환경 파일이 **아직 존재하지 않음**을 확인하고, 복원된 원본 비밀 설정값을 비공개 프로젝트 디렉터리에 권한 `600`으로 배치했습니다. 비밀값 자체는 출력하지 않았습니다.
+
+독립 Compose 설정으로 **DB 서비스만** 실행했고 컨테이너 `mastodon-restore-db-1`가 `healthy`가 됐습니다. Docker Compose 프로젝트 `mastodon-restore`, 단독 연결 네트워크 `mastodon-restore-airgap`, 외부 공개 포트 0개, 전용 영속 데이터 마운트를 확인했습니다. PostgreSQL의 `pg_hba_file_rules` 조회는 호스트 규칙 **5개 / 비SCRAM 규칙 0개**였고, 신규 클러스터에는 `mastodon` 역할 및 `mastodon_production` DB가 **0개/0개**였습니다. 마지막 출력은 **`CHECKPOINT 24-16J-1 POSTGRESQL READY`**입니다.
+
+**검증 한계:** 새 클러스터가 초기화되고 보호된 상태로 대기하는 것까지 확인했습니다. 앱 역할 생성·앱 비밀번호를 이용한 TCP 인증·`pg_restore`·Web/Sidekiq/Streaming 기동은 **아직 수행하지 않았습니다**. 이 상태부터는 상태가 유지되므로 초기화 명령을 반복하지 않고 역할/DB 생성 단계로 진행합니다.
+
+## 31. 아직 '통과'라고 선언하면 안 되는 항목
 
 - 특정 Sidekiq 개별 작업 성공 여부의 독립적 검증
 - **독립 VM 복원 및 앱 계정 로그인 검증**
