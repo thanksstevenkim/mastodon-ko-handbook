@@ -1,6 +1,6 @@
 # 05B. 신규 설치의 비밀키·PostgreSQL 인증 안전화 실험
 
-> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할 검증 통과 (Checkpoint 24-2~24-5B, 2026-10-26).** Mastodon v4.7.3과 PostgreSQL 14의 공식 구성을 대조하고 새 `mastodon-install-lab`에서 실제 TCP 인증 및 앱 계정 권한을 검증했습니다. **Rails 암호화 키와 VAPID 키의 생성·저장, Web·Sidekiq·Streaming 실행은 아직 미검증**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
+> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키 존재 및 DB 스키마 초기화 검증 통과 (Checkpoint 24-2~24-7, 2026-10-26).** 새 `mastodon-install-lab`에서 SCRAM TCP 인증·앱 계정 권한·필수 키 6개와 Rails 초기 스키마를 검증했습니다. **Web·Sidekiq·Streaming 최초 실행, HTTPS 로그인, 신규 실험 VM 재부팅·독립 복원은 아직 미검증**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
 
 [← 05A. UTM 설치 실측](05a-utm-verified-installation.md) · [05. 최초 설치](05-initial-setup.md) · [핸드북 목차](../../README.md)
 
@@ -120,11 +120,18 @@ Mastodon 앱 키는 **v4.7.3 이미지 내부의 공식 생성 작업**을 사�
 - **24-5A PostgreSQL:** 새 `postgres:14-alpine` 컨테이너 Healthy, `pg_hba_file_rules`에서 호스트 유형 규칙 5개가 모두 `scram-sha-256`, 규칙 오류 0건. 올바른 PostgreSQL 관리자 비밀번호 허용, 잘못된 비밀번호 및 무비밀번호 **TCP** 연결 거부를 실제 시험했습니다.
 - **중요한 인증 경계:** 로컬 Unix 소켓을 위한 `local` 규칙 2개에는 `trust`가 남아 있습니다. 따라서 모든 연결 경로가 SCRAM으로 보호된다는 의미는 아닙니다. PostgreSQL 내부 소켓 접근자와 컨테이너 관리권한을 별도로 통제해야 합니다.
 
-## 6. 아직 '통과'라고 선언하면 안 되는 항목
+## 6. Checkpoint 24-6~24-7 검증 결과
 
-- Mastodon 공식 Rails 암호화 키 3개·앱 키·VAPID 키가 호스트 파일에 비공개로 정확히 기록되고 재실행으로 덮어써지지 않는지
-- 신규 DB 마이그레이션, Web·Sidekiq·Streaming의 서비스 헬스와 로그인
-- 별도 실험 VM 재시작 후 영속성·백업 복원
+- **24-6 비밀키 생성:** 실험자가 공식 Mastodon v4.7.3 컨테이너에서 Rails 앱 키, Active Record encryption 키 3개, VAPID 키 2개를 생성하는 배치 명령의 **정상 통과를 보고**했습니다. 이후 터미널 화면은 `clear`되어 원본 출력은 보관되지 않았습니다. 이를 고려해 후속 검사 결과와 구분합니다.
+- **24-7 비밀키 저장 실측:** 호스트 `.env.production`의 필수 키 6개가 각각 예상 형식으로 1개씩 존재하고 서로 다른 값을 가진 것을 재검증했습니다. 실제 비밀값을 출력하지 않았으며 Git 제외 및 Compose 구문 검사도 통과했습니다. **저장된 키의 존재·형식 검증이지 암호화 키의 모든 기능 테스트는 아닙니다.**
+- **24-7 스키마 초기화:** PostgreSQL 앱 DB의 기존 `public` 테이블 **0개** 확인 후 Redis 7을 시작해 Healthy / `PONG`을 확인했습니다. 공식 Web 이미지의 신규 Rails `db:migrate:setup` 작업이 오류 없이 끝났고, 사후 점검에서 `public` 테이블 **118개**, `accounts`·`users`·`user_roles` 존재, `schema_migrations` **615개**, 사용자 역할 시드 **4개**를 확인했습니다.
+
+## 7. 아직 '통과'라고 선언하면 안 되는 항목
+
+- Web·Sidekiq·Streaming 최초 기동, Health 검사, 미디어 바인드 마운트 및 쓰기 권한
+- 브라우저 HTTPS 로그인, 게시물·이미지 저장 및 백그라운드 작업의 실제 동작
+- 별도 실험 VM 재부팅 후 영속성·백업 복원
+- 새 설치 절차를 외부 독자가 다른 환경에서 재현할 수 있는지
 
 위 항목을 실제 새 VM에서 확인한 **명령과 출력**이 있어야 검증 상태를 바꿉니다. 기존 Checkpoint 21~23의 DR 복구 성공과 혼동하지 않습니다.
 
