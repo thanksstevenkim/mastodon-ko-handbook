@@ -1,6 +1,6 @@
 # 05B. 신규 설치의 비밀키·PostgreSQL 인증 안전화 실험
 
-> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·독립 Mac HTTPS·Safari 로그인·게시물/미디어 저장·실제 재부팅 후 자동 복구 및 Safari 재검증·Mac 임시 설정 정리·암호화 백업 생성·Mac 사본 무결성·독립 복원 VM 사전 준비 점검 통과 (Checkpoint 24-2~24-16A, 2026-10-26).** 새 `mastodon-install-lab`에서 SCRAM TCP 인증, 계정·키, 초기 스키마, 서비스, Caddy HTTPS와 Mac 접근을 검증했습니다. **재부팅 후 Safari HTTPS 접속·관리자 재인증/세션·기존 게시물과 이미지 표시·관리자 대시보드 접근은 사용자의 정상 동작 보고**로 확인했습니다. DB·미디어·설정의 재부팅 후 보존과 Mac 임시 CA/hosts 정리, 암호화 백업 복호화 및 Mac 사본 해시 일치도 검사했습니다. **별도 복원 VM 생성과 실제 독립 복원, Sidekiq 개별 작업 검증은 아직 미완료**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
+> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·독립 Mac HTTPS·Safari 로그인·게시물/미디어 저장·재부팅 후 자동 복구 및 Safari 재검증·Mac 임시 설정 정리·암호화 백업 생성·Mac 사본 무결성·독립 복원 VM 신규 설치 검증 통과 (Checkpoint 24-2~24-16B, 2026-10-26).** 새 `mastodon-install-lab`에서 SCRAM TCP 인증, 계정·키, 초기 스키마, 서비스, Caddy HTTPS와 Mac 접근을 검증했습니다. **재부팅 후 Safari HTTPS 접근·관리자 재인증/세션·기존 게시물과 이미지 표시·관리자 대시보드 접근은 사용자의 정상 동작 보고**로 확인했습니다. DB·미디어·설정의 재부팅 후 보존과 Mac 임시 CA/hosts 정리, 암호화 백업 복호화 및 Mac 사본 해시 일치도 검사했습니다. 네 번째 격리된 VM `mastodon-restore-lab`의 OS·자원·IP·SSH를 점검했습니다. **복원 VM으로 암호화 백업 전송, 실제 독립 복원, Sidekiq 개별 작업 검증은 아직 미완료**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
 
 [← 05A. UTM 설치 실측](05a-utm-verified-installation.md) · [05. 최초 설치](05-initial-setup.md) · [핸드북 목차](../../README.md)
 
@@ -267,7 +267,13 @@ macOS `arm64` 호스트에서 `~/Documents/Mastodon-Backups/Lab/Secure-Install/m
 
 **복원 환경 계획:** `mastodon-restore-lab`이라는 네 번째 별도 Ubuntu ARM64 VM을 생성하되, Mac 16GiB RAM을 고려해 기존 UTM VM을 필요한 만큼 종료합니다. 기존 `mastodon-lab`, `mastodon-dr-lab`, `mastodon-install-lab` 및 운영 서비스와 저장소를 재사용·덮어쓰지 않습니다. 복호화한 비밀키와 DB 덤프는 복원 VM에서만 취급하고, 다른 시스템으로의 ActivityPub 발신 등 외부 부작용을 차단한 후 실제 복원을 검증합니다.
 
-## 22. 아직 '통과'라고 선언하면 안 되는 항목
+## 22. Checkpoint 24-16B 전용 복원 VM 신규 설치
+
+기존 세 VM을 보존하고 네 번째 UTM VM **`mastodon-restore-lab`**을 새로 구성했습니다. Ubuntu Server **24.04.5 LTS ARM64**(`aarch64`), 사용자 `steven`, **4 vCPU**, 메모리 **5.8GiB**, 스왑 **4GiB**, 신규 가상 디스크 **50GB**, 루트 LVM 파일시스템 **23GB(여유 16GB)**가 확인됐습니다. UTM Shared Network의 DHCP IPv4 주소는 **`192.168.64.7/24`**이며 호스트의 OpenSSH는 `active`입니다. 출력 마지막에 **`CHECKPOINT 24-16B RESTORE VM READY`**가 나타났습니다.
+
+**판정:** 신규 VM의 식별·자원·운영체제·SSH 준비 상태가 검증됐습니다. 가상 디스크 전체와 루트 LVM 크기는 서로 다르지만 현 단계에서 자동 확장하거나 기존 VM을 변경하지 않습니다. **암호화 백업 전송, Docker 설치, 민감정보 복호화, DB 복원 및 서비스 시작은 아직 수행하지 않았습니다.** 다음 단계에서 백업 원본 SHA-256과 수신 파일의 SHA-256 일치를 확인하고, 외부 ActivityPub/SMTP 발신을 차단한 뒤 서비스 복원을 시도합니다.
+
+## 23. 아직 '통과'라고 선언하면 안 되는 항목
 
 - 특정 Sidekiq 개별 작업 성공 여부의 독립적 검증
 - **독립 VM 복원 및 앱 계정 로그인 검증**
