@@ -1,6 +1,6 @@
 # 05B. 신규 설치의 비밀키·PostgreSQL 인증 안전화 실험
 
-> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·서버/독립 Mac HTTPS·최초 Owner 생성 및 Safari 로그인 검증 통과 (Checkpoint 24-2~24-11B, 2026-10-26).** 새 `mastodon-install-lab`에서 SCRAM TCP 인증·앱 계정 권한·필수 키 6개·Rails 초기 스키마, 핵심 서비스 헬스체크, Caddy HTTPS와 독립 Mac 연결을 검증했습니다. **Safari 관리자의 실제 로그인 성공은 실험자의 보고로 확인**했으며 관리자 화면 접근·게시물·미디어·Sidekiq 기능, VM 재부팅·독립 복원은 아직 미검증입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
+> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·독립 Mac HTTPS·Safari 로그인·게시물/미디어 저장 검증 통과 (Checkpoint 24-2~24-12, 2026-10-26).** 새 `mastodon-install-lab`에서 SCRAM TCP 인증, 계정·키, 초기 스키마, 핵심 서비스, Caddy HTTPS 및 Mac 접근을 검증했습니다. **Safari 관리자 로그인 성공은 사용자의 보고로 확인**했고, DB에 게시물 2개·연결된 미디어 1개, 로컬 미디어 파일 존재를 확인했습니다. **Sidekiq 처리 카운터는 관찰했으나 개별 작업 성공, 관리자 대시보드 접근, 재부팅·독립 복원은 아직 미검증**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
 
 [← 05A. UTM 설치 실측](05a-utm-verified-installation.md) · [05. 최초 설치](05-initial-setup.md) · [핸드북 목차](../../README.md)
 
@@ -182,10 +182,15 @@ Mac 로그인 키체인에 **실험용 로컬 공개 CA 인증서**를 사용자
 
 실험자는 Mac의 `mastodon-install.test` 접근 설정 이후 비밀번호 파일에서 암호를 출력 없이 클립보드로 복사했으며, 기존 Mac zsh에서 `case`의 `!` 히스토리 확장 오류를 피하도록 검사식을 수정했습니다. 이어서 **Safari 로그인 성공을 보고**했습니다. 브라우저 화면·세션 내부 관리자 권한은 별도 진단 로그로 검증하지 않았으므로, 본 항목은 **사용자 보고에 따른 실사용 로그인 성공**으로 명시합니다. 임시 Caddy 로컬 CA의 Mac 로그인 키체인 신뢰와 `/etc/hosts` 실험 도메인 설정은 아직 유지 중이며, 후속 브라우저 실험 완료 후 해당 항목만 원상복구할 예정입니다.
 
-## 13. 아직 '통과'라고 선언하면 안 되는 항목
+## 13. Checkpoint 24-12 실제 게시물·미디어 저장 검사
 
-- 관리자 대시보드 접근 및 실제 게시물·이미지·Sidekiq 기능 검증
-- 게시물·이미지 저장 및 Sidekiq 백그라운드 작업의 실제 기능
+`mastodon-install-lab`에서 체크포인트 검증 명령을 실행했으며 PostgreSQL·Redis·Web·Sidekiq·Streaming의 **다섯 컨테이너 모두 healthy**, 호스트 Caddy **active**를 확인했습니다. PostgreSQL의 `mastodon_production` DB에서 로컬 `labadmin` 계정의 일반 상태(status) 레코드 **2개**, 같은 계정에 귀속되고 `status_id`가 설정된 미디어 첨부 **1개**를 확인했습니다. 호스트 `public/system` 아래 실파일의 존재도 검증했습니다. Redis `stat:processed` 카운터는 **145**였습니다.
+
+**검증의 한계:** 이번 검사로 DB 레코드·미디어 파일 보존과 Sidekiq 누적 처리 지표는 확인되지만, 특정 이미지 변환 작업의 성공이나 브라우저에서의 실제 표시까지 자동으로 검증한 것은 아닙니다. 사용자가 본 Safari 이미지 표시, 관리자 대시보드 화면 성공에 대한 독립 출력도 제공되지 않았습니다. 실험 VM에서 실수로 실행된 `mustard-r2-batch-runner.sh`의 권한 변경·문법 검사·SHA-256 출력은 파일 부재로 모두 실패했으며, 이 R2 유지보수 스크립트는 별도 서버 작업에 속하므로 이 VM의 Mastodon 검사와 무관합니다.
+
+## 14. 아직 '통과'라고 선언하면 안 되는 항목
+
+- Safari 관리자 대시보드 및 JPEG 원본·썸네일 표시 확인, 특정 Sidekiq 작업의 성공 여부
 - 별도 실험 VM 재시작 후 영속성·백업 복원
 - 새 설치 절차를 외부 독자가 다른 환경에서 재현할 수 있는지
 
