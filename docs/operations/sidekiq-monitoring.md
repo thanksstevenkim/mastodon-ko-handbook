@@ -53,7 +53,67 @@ Sidekiq 8 계열의 타임스탬프를 직접 숫자로 해석할 때 밀리초/
 
 운영 환경에서 **읽기 전용 보고서만** 기록하도록 설계합니다. 구성 요소는 (1) 점검용 셸 스크립트, (2) `Type=oneshot` 서비스, (3) 달력형 타이머입니다.
 
-가장 단순한 스크립트는 2장의 읽기 전용 API 점검을 수행합니다. 실서비스에서 쓰려면 실제 Compose 위치로 이동하고, 컨테이너가 실행 중이며 `healthy`인지 검사하도록 보강하세요. 스크립트에 비밀번호나 토큰을 넣지 말고, `docker` 그룹 권한은 높은 호스트 권한에 준하므로 실행 계정을 제한하세요.
+다음은 실제 운영에서 검증한 감사 로직을 **일반화한 예시**입니다. `/YOUR/MASTODON/COMPOSE/DIR`은 실제 Compose 프로젝트 경로로 바꿔야 합니다. 서비스에 Docker 명령 실행 권한을 가진 계정이 필요합니다. **Docker 소켓 접근 권한은 사실상 호스트 관리자 권한에 준하므로** 실행 계정을 엄격하게 제한하고 스크립트는 root 소유로 설치하세요. 컨테이너에 healthcheck가 없으면 예시 스크립트는 실패하도록 구성했습니다.
+
+**`/usr/local/libexec/mastodon-sidekiq-audit` 파일 예시:**
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd /YOUR/MASTODON/COMPOSE/DIR
+
+echo "=== MASTODON SIDEKIQ AUDIT ==="
+echo "Timestamp (UTC): $(date -u +%FT%TZ)"
+
+docker compose ps sidekiq
+cid="$(docker compose ps -q sidekiq)"
+test -n "$cid"
+
+health="$(docker inspect \
+  --format '{{.State.Status}}/{{if .State.Health}}{{.State.Health.Status}}{{else}}unknown{{end}}' \
+  "$cid")"
+echo "Container health: $health"
+test "$health" = "running/healthy"
+
+docker compose exec -T sidekiq bin/rails runner '
+  require "sidekiq/api"
+
+  s = Sidekiq::Stats.new
+  puts "Processed total: #{s.processed}"
+  puts "Failed executions total: #{s.failed}"
+  puts "Enqueued: #{s.enqueued}"
+  puts "Retry: #{s.retry_size}"
+  puts "Dead: #{s.dead_size}"
+  puts "Scheduled: #{s.scheduled_size}"
+  puts "Processes: #{s.processes_size}"
+  puts "Busy workers: #{Sidekiq::WorkSet.new.size}"
+
+  Sidekiq::Queue.all.sort_by(&:name).each do |q|
+    puts "#{q.name}: size=#{q.size}, latency=#{q.latency.round(1)}s"
+  end
+
+  puts "=== Recent Daily Statistics (UTC) ==="
+  h = Sidekiq::Stats::History.new(3)
+  processed, failed = h.processed, h.failed
+  (processed.keys | failed.keys).sort.each do |date|
+    puts "#{date}: processed=#{processed.fetch(date, 0)}, failed=#{failed.fetch(date, 0)}"
+  end
+'
+
+echo "=== SIDEKIQ AUDIT COMPLETED ==="
+```
+
+이 스크립트와 아래 서비스·타이머 파일을 작성한 다음, 기존 경로·유닛이 없는지 확인하고 안전한 권한으로 설치합니다. 기존 파일을 덮어쓰지 마세요.
+
+```bash
+sudo install -d -m 0755 /usr/local/libexec
+sudo install -o root -g root -m 0755 ./mastodon-sidekiq-audit /usr/local/libexec/mastodon-sidekiq-audit
+sudo install -o root -g root -m 0644 ./mastodon-sidekiq-audit.service /etc/systemd/system/mastodon-sidekiq-audit.service
+sudo install -o root -g root -m 0644 ./mastodon-sidekiq-audit.timer /etc/systemd/system/mastodon-sidekiq-audit.timer
+```
+
+위 설치 명령은 **현재 작업 디렉터리에 검토된 세 파일이 이미 존재하고, 목적지에 같은 이름의 파일이 없다는 전제**의 예시입니다. 이 조건을 먼저 직접 확인하세요. 비밀번호나 토큰을 스크립트에 넣지 마세요.
 
 **서비스 파일 예시(환경별 치환 필수):**
 
