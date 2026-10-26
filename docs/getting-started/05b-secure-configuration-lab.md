@@ -1,6 +1,6 @@
 # 05B. 신규 설치의 비밀키·PostgreSQL 인증 안전화 실험
 
-> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·독립 Mac HTTPS·Safari 로그인·게시물/미디어 저장 및 재부팅 전 영속성 기준점 검증 통과 (Checkpoint 24-2~24-13A, 2026-10-26).** 새 `mastodon-install-lab`에서 SCRAM TCP 인증, 계정·키, 초기 스키마, 핵심 서비스, Caddy HTTPS 및 Mac 접근을 검증했습니다. **Safari 관리자 로그인 성공은 사용자의 보고로 확인**했고, DB에 게시물 2개·연결된 미디어 1개, 로컬 미디어 파일 존재를 확인했습니다. **Sidekiq 처리 카운터는 관찰했으나 개별 작업 성공, 관리자 대시보드 접근, 실제 재부팅·독립 복원은 아직 미검증**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
+> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·독립 Mac HTTPS·Safari 로그인·게시물/미디어 저장·실제 재부팅 후 자동 복구 검증 통과 (Checkpoint 24-2~24-13B, 2026-10-26).** 새 `mastodon-install-lab`에서 SCRAM TCP 인증, 계정·키, 초기 스키마, 핵심 서비스, Caddy HTTPS 및 Mac 접근을 검증했습니다. **Safari 관리자 로그인 성공은 사용자의 보고로 확인**했고, DB의 게시물 2개·연결된 미디어 1개와 로컬 미디어 파일이 재부팅 후에도 유지된 것을 확인했습니다. **Sidekiq 개별 작업 성공, Safari의 재부팅 후 실사용 확인, 관리자 대시보드, 독립 백업 복원은 아직 미검증**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
 
 [← 05A. UTM 설치 실측](05a-utm-verified-installation.md) · [05. 최초 설치](05-initial-setup.md) · [핸드북 목차](../../README.md)
 
@@ -203,10 +203,28 @@ Mac 로그인 키체인에 **실험용 로컬 공개 CA 인증서**를 사용자
 
 `.env.production`과 `.env.postgres` 권한은 각각 `600`, 실제 `public/system` 미디어 파일이 존재했고 게스트 HTTPS `/health` 응답은 `OK`였습니다. **이것은 자동 재기동과 데이터 보존의 사전 조건을 확인한 결과이며, 실제 재부팅 후 복구 성공을 의미하지 않습니다.** 후속 Checkpoint 24-13B에서 비교해야 합니다.
 
-## 15. 아직 '통과'라고 선언하면 안 되는 항목
+## 15. Checkpoint 24-13B 실제 재부팅 후 자동 복구 검증
 
-- Safari 관리자 대시보드 및 JPEG 원본·썸네일 표시 확인, 특정 Sidekiq 작업의 성공 여부
-- 별도 실험 VM 재시작 후 영속성·백업 복원
+전용 `mastodon-install-lab`에서 부팅 ID·비밀 설정 파일의 체크섬을 비공개 파일에 저장한 뒤 **`sudo systemctl reboot`로 실제 VM 재부팅**했습니다. SSH 연결이 종료된 후 같은 VM으로 재접속했고, `docker compose up` 같은 수동 재시작 없이 읽기 전용 검사를 수행했습니다.
+
+| 항목 | 재부팅 후 관찰 |
+| --- | --- |
+| Linux 부팅 ID | 재부팅 전과 달라 실제 재부팅 확인 |
+| Docker·Caddy | 자동 시작 후 모두 `active` |
+| DB·Redis·Web·Sidekiq·Streaming | 모두 `healthy` |
+| 관리자·게시물·첨부 미디어·마이그레이션 | **`1|2|1|615`**, 24-13A 기준점과 일치 |
+| PostgreSQL `pg_hba_file_rules` | 호스트 규칙 5개 / 비SCRAM 규칙 0개 |
+| `.env.production`, `.env.postgres` | 기록된 SHA-256과 두 파일 모두 일치 (`OK`) |
+| 미디어 저장소 | 실제 파일 보존 확인 |
+| Redis | `PONG` |
+| Caddy HTTPS Web / Streaming | 두 Health 엔드포인트 모두 `OK` |
+
+**판정:** VM의 실제 부팅 이후 Docker와 Caddy의 자동 서비스 복구, PostgreSQL SCRAM 규칙과 핵심 DB 데이터·비밀 설정 파일·미디어 보존 및 HTTP 헬스체크를 실증했습니다. 별도 VM에 암호화 백업을 복원하는 **독립 재해 복구(DR)** 성공과는 다른 검사입니다. 또한 Safari에서의 재부팅 후 로그인 상태 및 원본·썸네일 미디어 표시 여부는 아직 별도 확인이 필요합니다.
+
+## 16. 아직 '통과'라고 선언하면 안 되는 항목
+
+- Safari의 재부팅 후 관리자 접근 및 JPEG 원본·썸네일 표시, 특정 Sidekiq 작업의 성공 여부
+- 새 실험 환경의 **암호화 백업과 독립 복원**
 - 새 설치 절차를 외부 독자가 다른 환경에서 재현할 수 있는지
 
 위 항목을 실제 새 VM에서 확인한 **명령과 출력**이 있어야 검증 상태를 바꿉니다. 기존 Checkpoint 21~23의 DR 복구 성공과 혼동하지 않습니다.
