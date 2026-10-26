@@ -1,6 +1,6 @@
 # 05B. 신규 설치의 비밀키·PostgreSQL 인증 안전화 실험
 
-> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·독립 Mac HTTPS·Safari 로그인·게시물/미디어 저장·실제 재부팅 후 자동 복구 및 Safari 재검증·Mac 임시 설정 정리·암호화 백업 생성·Mac 별도 사본 무결성 검증 통과 (Checkpoint 24-2~24-15C, 2026-10-26).** 새 `mastodon-install-lab`에서 SCRAM TCP 인증, 계정·키, 초기 스키마, 핵심 서비스, Caddy HTTPS 및 Mac 접근을 검증했습니다. **재부팅 후 Safari HTTPS 접속·관리자 재인증/세션·기존 게시물과 이미지 표시·관리자 대시보드 접근은 사용자의 정상 동작 보고**로 확인했습니다. DB·미디어·설정의 재부팅 후 보존과 Mac 임시 실험 CA 신뢰 및 hosts 항목 제거도 검사했습니다. **Sidekiq 개별 작업 성공 및 별도 VM에서의 백업 독립 복원은 아직 미검증**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
+> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·독립 Mac HTTPS·Safari 로그인·게시물/미디어 저장·실제 재부팅 후 자동 복구 및 Safari 재검증·Mac 임시 설정 정리·암호화 백업 생성·Mac 사본 무결성·독립 복원 VM 사전 준비 점검 통과 (Checkpoint 24-2~24-16A, 2026-10-26).** 새 `mastodon-install-lab`에서 SCRAM TCP 인증, 계정·키, 초기 스키마, 서비스, Caddy HTTPS와 Mac 접근을 검증했습니다. **재부팅 후 Safari HTTPS 접속·관리자 재인증/세션·기존 게시물과 이미지 표시·관리자 대시보드 접근은 사용자의 정상 동작 보고**로 확인했습니다. DB·미디어·설정의 재부팅 후 보존과 Mac 임시 CA/hosts 정리, 암호화 백업 복호화 및 Mac 사본 해시 일치도 검사했습니다. **별도 복원 VM 생성과 실제 독립 복원, Sidekiq 개별 작업 검증은 아직 미완료**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
 
 [← 05A. UTM 설치 실측](05a-utm-verified-installation.md) · [05. 최초 설치](05-initial-setup.md) · [핸드북 목차](../../README.md)
 
@@ -261,7 +261,13 @@ Mac 로그인 키체인에 **실험용 로컬 공개 CA 인증서**를 사용자
 
 **판정:** 원본 VM과 다른 파일시스템인 Mac에 암호화 아카이브가 보존되고 전송 무결성이 검증됐습니다. 단, Mac 및 UTM VM이 같은 물리적 장치에 있다면 이 복사본만으로 물리적 장치 고장에 대한 오프사이트 복원을 확보한 것은 아닙니다. 독립 VM에서의 실제 DB·미디어·설정 복원과 계정 로그인은 **아직 실시하지 않았습니다.** 비밀번호·비밀 설정값은 저장소에 기록하지 않았습니다.
 
-## 21. 아직 '통과'라고 선언하면 안 되는 항목
+## 21. Checkpoint 24-16A 독립 복원 VM 준비 점검
+
+macOS `arm64` 호스트에서 `~/Documents/Mastodon-Backups/Lab/Secure-Install/mastodon-install-20261026T022203Z.tar.gpg` 파일의 `.sha256` 검증이 다시 **`OK`**임을 확인했습니다. macOS 물리 메모리는 **16.0GiB**, 데이터 볼륨 여유 공간은 **243GiB**, `/Applications/UTM.app` 또는 사용자 Applications 아래 **UTM 설치 확인**이 완료됐습니다. 이번 점검은 읽기 전용이며 **새 복원 VM은 아직 생성하지 않았습니다**.
+
+**복원 환경 계획:** `mastodon-restore-lab`이라는 네 번째 별도 Ubuntu ARM64 VM을 생성하되, Mac 16GiB RAM을 고려해 기존 UTM VM을 필요한 만큼 종료합니다. 기존 `mastodon-lab`, `mastodon-dr-lab`, `mastodon-install-lab` 및 운영 서비스와 저장소를 재사용·덮어쓰지 않습니다. 복호화한 비밀키와 DB 덤프는 복원 VM에서만 취급하고, 다른 시스템으로의 ActivityPub 발신 등 외부 부작용을 차단한 후 실제 복원을 검증합니다.
+
+## 22. 아직 '통과'라고 선언하면 안 되는 항목
 
 - 특정 Sidekiq 개별 작업 성공 여부의 독립적 검증
 - **독립 VM 복원 및 앱 계정 로그인 검증**
