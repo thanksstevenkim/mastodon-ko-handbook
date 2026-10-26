@@ -1,6 +1,6 @@
 # 05B. 신규 설치의 비밀키·PostgreSQL 인증 안전화 실험
 
-> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·독립 Mac HTTPS·Safari 로그인·게시물/미디어 저장·재부팅 후 자동 복구 및 Safari 재검증·Mac 임시 설정 정리·암호화 백업 생성·Mac 사본 무결성·독립 복원 VM 암호화 사본 수신·Docker 설치·내부 네트워크 TCP 차단 검사 통과 (Checkpoint 24-2~24-16E, 2026-10-26).** 새 `mastodon-install-lab`에서 SCRAM TCP 인증, 계정·키, 초기 스키마, 서비스, Caddy HTTPS와 Mac 접근을 검증했습니다. **재부팅 후 Safari HTTPS 접근·관리자 재인증/세션·기존 게시물과 이미지 표시·관리자 대시보드 접근은 사용자의 정상 동작 보고**로 확인했습니다. DB·미디어·설정의 재부팅 후 보존과 Mac 임시 CA/hosts 정리, 암호화 백업 복호화 및 Mac 사본 해시 일치도 검사했습니다. 별도 VM `mastodon-restore-lab`(192.168.64.7)에 백업을 전송해 해시 일치를 확인하고 Docker 및 내부 네트워크의 외부 TCP 차단을 시험했습니다. **실제 독립 복원, 게이트웨이·호스트 연결을 포함하는 강화된 격리, Sidekiq 개별 작업 검증은 아직 미완료**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
+> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·독립 Mac HTTPS·Safari 로그인·게시물/미디어 저장·재부팅 후 자동 복구 및 Safari 재검증·Mac 임시 설정 정리·암호화 백업 생성·Mac 사본 무결성·독립 복원 VM 암호화 사본 수신·Docker 설치·전용 격리 네트워크 실측 검증 통과 (Checkpoint 24-2~24-16F, 2026-10-26).** 새 `mastodon-install-lab`에서 SCRAM TCP 인증, 계정·키, 초기 스키마, 서비스, Caddy HTTPS와 Mac 접근을 검증했습니다. **재부팅 후 Safari HTTPS 접근·관리자 재인증/세션·기존 게시물과 이미지 표시·관리자 대시보드 접근은 사용자의 정상 동작 보고**로 확인했습니다. DB·미디어·설정의 재부팅 후 보존과 Mac 임시 CA/hosts 정리, 암호화 백업 복호화 및 Mac 사본 해시 일치도 검사했습니다. 별도 VM `mastodon-restore-lab`(192.168.64.7)에 암호화 백업을 전송하여 해시 일치를 확인하고 Docker 및 `gateway_mode_ipv4=isolated` 내부 네트워크의 기본 경로 제거·단일 외부 TCP 차단을 검증했습니다. **실제 독립 DB/앱 복원, 서비스별 Compose 네트워크 정책, Sidekiq 개별 작업 검증은 아직 미완료**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
 
 [← 05A. UTM 설치 실측](05a-utm-verified-installation.md) · [05. 최초 설치](05-initial-setup.md) · [핸드북 목차](../../README.md)
 
@@ -291,7 +291,13 @@ macOS의 원본 암호화 백업 **`mastodon-install-20261026T022203Z.tar.gpg`**
 
 **판정의 한계:** 내부 컨테이너 간 통신과 단일 외부 IPv4 TCP 목적지 차단이 입증된 것이지 **모든 발신·호스트 게이트웨이 경유 연결을 원천 차단한 완전 에어갭은 아닙니다**. Docker 공식 [network create 문서](https://docs.docker.com/reference/cli/docker/network/create/#network-internal-mode---internal)에는 내부 네트워크에서도 게이트웨이 IP를 통한 호스트 서비스와의 통신이 가능하다고 명시돼 있습니다. 추후 `com.docker.network.bridge.gateway_mode_ipv4=isolated` 같은 강한 게이트웨이 차단 옵션과 실제 서비스 Compose 네트워크 목록 검증을 적용하기 전에는 Web·Sidekiq를 기동하지 않습니다. 백업은 계속 암호화 상태로 보관합니다.
 
-## 26. 아직 '통과'라고 선언하면 안 되는 항목
+## 26. Checkpoint 24-16F 호스트 게이트웨이 없는 격리 네트워크 검사
+
+기존 `mastodon-restore-isolated` 네트워크와 복원용 암호화 아카이브의 상태를 다시 확인하고, 복원 전용 새 Docker 브리지 네트워크 **`mastodon-restore-airgap`**을 `--internal --ipv6=false --opt com.docker.network.bridge.gateway_mode_ipv4=isolated`로 생성했습니다. 네트워크 속성은 **`bridge|true|false|isolated`**와 일치했습니다. 호스트 측 브리지 인터페이스에 **IPv4 주소가 없었고**, 시험 컨테이너에서 **기본 IPv4 경로 없음**, `1.1.1.1:443` **외부 TCP 연결 차단**, 같은 네트워크 내 시험 컨테이너 간 **HTTP 200 통신 성공**을 확인했습니다. 마지막에는 모든 시험 컨테이너가 제거되고 복원 네트워크만 보존됐으며 **`CHECKPOINT 24-16F GATEWAY ISOLATION PASSED`**가 출력됐습니다.
+
+**판정과 범위:** 이전 단계보다 강화된 복원용 네트워크에서 *호스트 브리지 IPv4 및 기본 IPv4 경로 부재*를 입증했습니다. 이는 시험한 IPv4 TCP 경로의 차단을 보여줄 뿐 Docker 소켓 마운트, 컨테이너의 추가 네트워크 연결, 호스트 네트워크 공유, 사용자 정의 프록시 등 다른 우회 경로까지 검증했다는 의미는 아닙니다. **실제 복원 서비스를 기동하기 전에 개별 서비스가 오직 이 외부 관리형 Docker 네트워크에만 연결됨을 `docker compose config`로 확인**해야 합니다. 원본 백업은 아직 암호화 상태이며 DB·Web·Sidekiq를 실행하지 않았습니다.
+
+## 27. 아직 '통과'라고 선언하면 안 되는 항목
 
 - 특정 Sidekiq 개별 작업 성공 여부의 독립적 검증
 - **독립 VM 복원 및 앱 계정 로그인 검증**
