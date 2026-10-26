@@ -1,6 +1,6 @@
 # 05B. 신규 설치의 비밀키·PostgreSQL 인증 안전화 실험
 
-> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·독립 Mac HTTPS·Safari 로그인·게시물/미디어 저장·재부팅 후 자동 복구 및 Safari 재검증·Mac 임시 설정 정리·암호화 백업 생성·Mac 사본 무결성·독립 복원 VM 수신·Docker 설치·격리 네트워크·Compose 정적 정책·ARM64 이미지 준비 검증 통과 (Checkpoint 24-2~24-16H, 2026-10-26).** 새 `mastodon-install-lab`에서 PostgreSQL SCRAM 인증과 Mastodon 주요 기능·재부팅 보존을 검증했으며, Mac의 임시 설정 제거와 암호화 백업 복호화 및 전송 해시 일치를 확인했습니다. 별도 `mastodon-restore-lab`(192.168.64.7)에서 Docker, 게이트웨이 없는 내부 네트워크, Compose 정책, 필요한 네 종류 ARM64 이미지 확보까지 검증했습니다. **실제 DB 복원·Web/Sidekiq 기동·원본 계정 복구와 독립 복원 기능 시험은 아직 미완료**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
+> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·독립 Mac HTTPS·Safari 로그인·게시물/미디어 저장·재부팅 후 자동 복구 및 Safari 재검증·Mac 임시 설정 정리·암호화 백업 생성·Mac 사본 무결성·독립 복원 VM 수신·Docker 설치·격리 네트워크·Compose 정적 정책·ARM64 이미지 준비 검증 통과 (Checkpoint 24-2~24-16I, 2026-10-26).** 새 `mastodon-install-lab`에서 PostgreSQL SCRAM 인증과 Mastodon 주요 기능·재부팅 보존을 검증했으며, Mac의 임시 설정 제거와 암호화 백업 복호화 및 전송 해시 일치를 확인했습니다. 별도 `mastodon-restore-lab`(192.168.64.7)에서 Docker, 게이트웨이 없는 내부 네트워크, Compose 정책, 필요한 네 종류 ARM64 이미지 확보까지 검증했습니다. **독립 VM 내부의 암호화 백업 추출·PostgreSQL 덤프 판독은 성공했으며, 실제 DB 복원·Web/Sidekiq 기동·원본 계정 복구 시험은 아직 미완료**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
 
 [← 05A. UTM 설치 실측](05a-utm-verified-installation.md) · [05. 최초 설치](05-initial-setup.md) · [핸드북 목차](../../README.md)
 
@@ -313,7 +313,15 @@ macOS의 원본 암호화 백업 **`mastodon-install-20261026T022203Z.tar.gpg`**
 
 **판정:** 이미지 다운로드와 ARM64 플랫폼 검사까지 완료됐습니다. 이미지 태그를 기준으로 준비했으므로 향후 재현에서는 공급망 무결성을 위해 해당 시점의 이미지 digest도 확인·고정할 수 있습니다. 암호화 백업은 아직 복원 VM에서 복호화하지 않았고, PostgreSQL·Redis·Web·Sidekiq·Streaming 컨테이너는 실행하지 않았습니다.
 
-## 29. 아직 '통과'라고 선언하면 안 되는 항목
+## 29. Checkpoint 24-16I 보호된 백업 추출 및 덤프 판독
+
+2026-10-26 전용 복원 VM에서 암호화 백업 무결성과 격리 네트워크 조건을 검증했습니다. 최초 실행 중 중단되어 권한 700의 빈 추출 디렉터리가 남았으나, 내용물이 0개임을 확인하고 `rmdir`로 정리한 후 원본 아카이브 무결성도 재확인했습니다.
+
+재시도에서는 GPG 복호화와 파일 경로·형식 검증을 통과했고, 비공개 복원 디렉터리에 필수 파일 7개 및 미디어를 추출했습니다. 각 핵심 파일의 권한 600, 매니페스트 일치, `pg_restore --list`에 의한 PostgreSQL 커스텀 덤프 판독 가능성을 검증했습니다. 출력은 **`CHECKPOINT 24-16I BACKUP EXTRACTION PASSED`**였습니다.
+
+**아직 확인하지 않은 항목:** 실제 PostgreSQL 복원, 계정 인증, 앱 컨테이너 실행. 이 단계에서 복원 컨테이너는 0개였으며, 추출된 민감 파일은 복원 VM 내부에만 보관합니다.
+
+## 30. 아직 '통과'라고 선언하면 안 되는 항목
 
 - 특정 Sidekiq 개별 작업 성공 여부의 독립적 검증
 - **독립 VM 복원 및 앱 계정 로그인 검증**
