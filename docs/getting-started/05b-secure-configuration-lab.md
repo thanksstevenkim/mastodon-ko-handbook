@@ -176,7 +176,7 @@ Mac 로그인 키체인에 **실험용 로컬 공개 CA 인증서**를 사용자
 
 이후 **설정 변경 없이** 읽기 전용 진단을 진행했습니다. Mac 기본 curl은 SecureTransport 기반이며, 같은 호스트에 대해 명시적 `--cacert`를 사용한 HTTPS는 `OK`, `CURL_SSL_BACKEND=secure-transport /usr/bin/curl -q`로 실행한 **기본 신뢰 HTTPS 역시 `OK`**였습니다. `security user-trust-settings-enable` 출력은 사용자 신뢰 설정의 활성화를 나타냈습니다.
 
-**판정:** macOS SecureTransport를 이용하는 특정 curl 호출의 신뢰 검사가 성공했지만, 이전 실패와의 차이는 아직 미확인입니다. 성공한 호출에는 `-q`(개인 curl 설정 무시)와 TLS 백엔드 환경변수가 포함되어 있으므로, `-q` 여부를 분리해 진단할 예정입니다. 이 결과만으로 Safari 로그인까지 통과했다고 기록하지 않습니다. **기존에 설치한 CA·hosts를 중복 설치하지 않습니다.** 최종 실험 뒤에는 해당 임시 설정만 제거할 예정입니다.
+**후속 판정(2026-10-26):** 동일한 Mac에서 `CURL_SSL_BACKEND`를 지정하지 않은 두 호출(`curl -q`, 기본 `curl`)은 모두 `curl: (60) unable to get local issuer certificate`로 실패했습니다. 따라서 `.curlrc` 사용 여부는 원인이 아니었습니다. macOS `/usr/bin/curl -V`가 보여준 `libcurl/8.7.1 (SecureTransport) LibreSSL/3.3.6`에서 **괄호 밖 LibreSSL은 기본 TLS 백엔드이고 SecureTransport는 선택 가능한 다른 백엔드**입니다. 공식 curl 설명에 따르면 `CURL_SSL_BACKEND=secure-transport`로 백엔드를 지정할 수 있으며, SecureTransport는 macOS의 인증서 신뢰 설정을 사용합니다. 따라서 이전 테스트에서 `SecureTransport` 강제 선택 시 `OK`, 기본 LibreSSL에서 오류 60이 나온 현상과 부합합니다. 출처: [curl TLS 백엔드 문서](https://everything.curl.dev/usingcurl/tls/backends.html), [curl 개발자 설명](https://curl.se/mail/lib-2025-01/0048.html). **이는 Safari 브라우저 로그인이 성공했다는 판정이 아닙니다.** 서버나 CA를 재발급할 이유는 없으며 기존에 추가한 인증서·hosts를 중복 설치하지 않습니다. 최종 실험 뒤에는 해당 임시 설정만 제거할 예정입니다.
 
 ## 12. 아직 '통과'라고 선언하면 안 되는 항목
 
