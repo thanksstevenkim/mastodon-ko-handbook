@@ -1,6 +1,6 @@
 # 05B. 신규 설치의 비밀키·PostgreSQL 인증 안전화 실험
 
-> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·게스트 VM 내부 HTTPS 검증 통과 (Checkpoint 24-2~24-9, 2026-10-26).** 새 `mastodon-install-lab`에서 SCRAM TCP 인증·앱 계정 권한·필수 키 6개·Rails 초기 스키마, Web·Sidekiq·Streaming 헬스체크 및 Caddy HTTPS를 검증했습니다. **Mac 클라이언트 HTTPS, 관리자 로그인, 신규 실험 VM 재부팅·독립 복원은 아직 미검증**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
+> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·서버/독립 Mac HTTPS 검증 통과 (Checkpoint 24-2~24-10, 2026-10-26).** 새 `mastodon-install-lab`에서 SCRAM TCP 인증·앱 계정 권한·필수 키 6개·Rails 초기 스키마, Web·Sidekiq·Streaming 헬스체크 및 Caddy HTTPS를 검증했습니다. Mac에서 별도 공개 루트 CA로 검증한 Web·Streaming·홈페이지 HTTPS 연결도 통과했습니다. **Safari 브라우저 신뢰·관리자 로그인·신규 실험 VM 재부팅·독립 복원은 아직 미검증**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
 
 [← 05A. UTM 설치 실측](05a-utm-verified-installation.md) · [05. 최초 설치](05-initial-setup.md) · [핸드북 목차](../../README.md)
 
@@ -152,9 +152,18 @@ Mastodon 앱 키는 **v4.7.3 이미지 내부의 공식 생성 작업**을 사�
 
 `curl --cacert`와 `--resolve`를 사용하여 **인증서를 무시하지 않고** HTTPS 연결을 검사했습니다. Caddyfile 서식 경고는 출력됐으나 유효한 구성과 실제 HTTPS 응답을 확인했습니다. **Mac에서의 독립적 TLS 검사, Safari 접속, 관리자 계정·로그인, 메일과 외부 연합 통신은 이번 검증에 포함되지 않았습니다.** 개인 인증기관의 **개인키는 복사하거나 공개하지 않습니다.**
 
-## 9. 아직 '통과'라고 선언하면 안 되는 항목
+## 9. Checkpoint 24-10 독립 Mac HTTPS 검증
 
-- Mac에서의 독립적 HTTPS 인증서·연결 검증과 관리자 계정·Safari 로그인
+VM에서 Caddy의 **공개 로컬 CA 인증서만** 별도 파일로 추출해 Mac으로 SCP 전송했습니다. VM과 Mac이 산출한 인증서 SHA-256 해시가 **`b573d28ca562ea30284e3218db74298222a0a50b24d805530a186d6033c8b07b`**로 일치했습니다. Mac에서는 `/etc/hosts`나 키체인 신뢰 설정을 변경하지 않고, `curl --noproxy '*' --cacert ... --resolve mastodon-install.test:443:192.168.64.6`로 서버 연결을 독립적으로 검증했습니다.
+
+- HTTPS Web `/health` 응답 **`OK`**.
+- HTTPS Streaming `/api/v1/streaming/health` 응답 **`OK`**.
+- HTTPS 홈페이지 응답 **HTTP 200**.
+- **아직 브라우저 검증은 아님:** `curl --cacert`의 성공은 Safari가 자동으로 Caddy 로컬 CA를 신뢰하거나 `mastodon-install.test`라는 이름을 해석한다는 뜻은 아닙니다. Mac 키체인과 `/etc/hosts`는 이 단계에서 그대로 두었습니다.
+
+## 10. 아직 '통과'라고 선언하면 안 되는 항목
+
+- Mac 키체인 및 브라우저 이름 해석 설정 후 관리자 계정 생성·Safari 로그인
 - 게시물·이미지 저장 및 Sidekiq 백그라운드 작업의 실제 기능
 - 별도 실험 VM 재시작 후 영속성·백업 복원
 - 새 설치 절차를 외부 독자가 다른 환경에서 재현할 수 있는지
