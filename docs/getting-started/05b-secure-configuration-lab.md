@@ -1,6 +1,6 @@
 # 05B. 신규 설치의 비밀키·PostgreSQL 인증 안전화 실험
 
-> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·독립 Mac HTTPS·Safari 로그인·게시물/미디어 저장·실제 재부팅 후 자동 복구 및 Safari 재검증·Mac 임시 설정 정리·백업 준비 점검 통과 (Checkpoint 24-2~24-15A, 2026-10-26).** 새 `mastodon-install-lab`에서 SCRAM TCP 인증, 계정·키, 초기 스키마, 핵심 서비스, Caddy HTTPS와 Mac 접근을 검증했습니다. **재부팅 후 Safari HTTPS 접속·관리자 재인증/세션·기존 게시물과 이미지 표시·관리자 대시보드 접근은 사용자의 정상 동작 보고**로 확인했습니다. DB·미디어·설정의 재부팅 후 보존과 Mac의 임시 실험 CA 신뢰 및 hosts 항목 제거도 검사했습니다. **Sidekiq 개별 작업 성공과 암호화 백업 생성·별도 환경의 독립 복원은 아직 미검증**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
+> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·독립 Mac HTTPS·Safari 로그인·게시물/미디어 저장·실제 재부팅 후 자동 복구 및 Safari 재검증·Mac 임시 설정 정리·암호화 백업 생성 및 아카이브 복호화 검사 통과 (Checkpoint 24-2~24-15B, 2026-10-26).** 새 `mastodon-install-lab`에서 SCRAM TCP 인증, 계정·키, 초기 스키마, 핵심 서비스, Caddy HTTPS와 Mac 접근을 검증했습니다. **재부팅 후 Safari HTTPS 접속·관리자 재인증/세션·기존 게시물과 이미지 표시·관리자 대시보드 접근은 사용자의 정상 동작 보고**로 확인했습니다. DB·미디어·설정의 재부팅 후 보존과 Mac의 임시 실험 CA 신뢰 및 hosts 항목 제거도 검사했습니다. **Sidekiq 개별 작업 성공 및 별도 환경의 백업 독립 복원은 아직 미검증**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
 
 [← 05A. UTM 설치 실측](05a-utm-verified-installation.md) · [05. 최초 설치](05-initial-setup.md) · [핸드북 목차](../../README.md)
 
@@ -247,10 +247,18 @@ Mac 로그인 키체인에 **실험용 로컬 공개 CA 인증서**를 사용자
 
 `.env.production`, `.env.postgres`는 일반 파일이고 권한 `600` 및 Git 제외가 확인됐으며 `public/system`에 실제 파일이 있었습니다. **이 검사는 읽기 전용으로 실행됐고 백업 파일은 아직 생성되지 않았습니다.** 다음 단계에서는 PostgreSQL 커스텀 논리 덤프·미디어·필수 환경변수·설정 파일을 암호화하고 원본 VM의 구성을 변경하지 않는 방식을 시험합니다. 원본 DB 디렉터리 복사만으로 일관된 온라인 백업이 된다고 가정하지 않습니다.
 
-## 19. 아직 '통과'라고 선언하면 안 되는 항목
+## 19. Checkpoint 24-15B 암호화 아카이브 생성 및 검증
+
+전용 `mastodon-install-lab`에서 핵심 서비스 5개가 모두 `healthy`, Caddy가 `active`임을 확인하고, PostgreSQL 14 이미지 내부 `pg_dump -Fc`로 `mastodon_production`의 **커스텀 형식 논리 덤프**를 만들었습니다. 덤프의 `PGDMP` 형식을 확인하고, Caddy 설정·복구용 메타데이터·미디어 파일·권한 `600`인 `.env.production` 및 `.env.postgres`·공식 Compose와 SCRAM 오버라이드를 `tar`로 묶어 **GPG AES-256 대칭키 방식으로 암호화**했습니다. Redis 캐시 및 Caddy 로컬 CA 개인키는 제외했습니다.
+
+**실측 결과:** `Encrypted archive: CREATED`, `Encrypted archive: DECRYPTION VERIFIED`, `Required archive members: VERIFIED`, `CHECKPOINT 24-15B ENCRYPTED BACKUP PASSED`. 아카이브 파일은 `mastodon-install-20261026T022203Z.tar.gpg`, 크기는 **492KB**, SHA-256은 `9f97177c3d0e3b4307382f9bfb8a2731549ca26b109a7f0ba396c5b9d2bf7962`였습니다. **해시와 파일명만 공개**하고 비밀번호·암호화 키·환경 파일 값은 공개하지 않았습니다.
+
+**검증의 한계:** 원본 VM에서 암호화 아카이브가 복호화되고 필수 구성원이 존재하는 것까지 검사했습니다. **실제 `pg_restore`, 원본 계정 로그인 및 별도 VM에서의 독립 복원은 아직 통과하지 않았습니다.** `pg_dump`는 PostgreSQL의 글로벌 역할 자체를 내보내지 않으므로 대상 VM에 `mastodon` 역할과 데이터베이스를 마련해야 합니다. DB와 미디어를 실행 중에 채집했으므로 지속적인 쓰기가 있는 운영 환경에서의 DB/파일 간 시점 일치를 자동 보장하지 않는다는 점도 명시합니다. 백업 암호는 별도 비밀번호 관리자에 보관하고, 일반 파일 삭제가 SSD의 평문 잔존을 완전히 제거한다고 간주하지 않습니다.
+
+## 20. 아직 '통과'라고 선언하면 안 되는 항목
 
 - 특정 Sidekiq 개별 작업 성공 여부의 독립적 검증
-- 새 실험 환경의 **암호화 백업과 독립 복원**
+- 암호화 아카이브의 Mac 보관 및 **독립 복원**
 - 새 설치 절차를 외부 독자가 다른 환경에서 재현할 수 있는지
 
 위 항목을 실제 새 VM에서 확인한 **명령과 출력**이 있어야 검증 상태를 바꿉니다. 기존 Checkpoint 21~23의 DR 복구 성공과 혼동하지 않습니다.
