@@ -1,6 +1,6 @@
 # 05B. 신규 설치의 비밀키·PostgreSQL 인증 안전화 실험
 
-> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·독립 Mac HTTPS·Safari 로그인·게시물/미디어 저장·재부팅 후 자동 복구 및 Safari 재검증·Mac 임시 설정 정리·암호화 백업 생성·Mac 사본 무결성·독립 복원 VM 수신·Docker 설치·격리 네트워크·Compose 정적 정책·ARM64 이미지 준비 검증 통과 (Checkpoint 24-2~24-16J-1, 2026-10-26).** 새 `mastodon-install-lab`에서 PostgreSQL SCRAM 인증과 Mastodon 주요 기능·재부팅 보존을 검증했으며, Mac의 임시 설정 제거와 암호화 백업 복호화 및 전송 해시 일치를 확인했습니다. 별도 `mastodon-restore-lab`(192.168.64.7)에서 Docker, 게이트웨이 없는 내부 네트워크, Compose 정책, 필요한 네 종류 ARM64 이미지 확보까지 검증했습니다. **독립 VM의 암호화 백업 추출·덤프 판독·신규 PostgreSQL 14 클러스터의 SCRAM 호스트 인증 및 격리 기동은 성공했으며, 앱 DB/역할 생성·실제 데이터 복원·원본 계정 복구 시험은 아직 미완료**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
+> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·독립 Mac HTTPS·Safari 로그인·게시물/미디어 저장·재부팅 후 자동 복구 및 Safari 재검증·Mac 임시 설정 정리·암호화 백업 생성·Mac 사본 무결성·독립 복원 VM 수신·Docker 설치·격리 네트워크·Compose 정적 정책·ARM64 이미지 준비 검증 통과 (Checkpoint 24-2~24-16J-2, 2026-10-26).** 새 `mastodon-install-lab`에서 PostgreSQL SCRAM 인증과 Mastodon 주요 기능·재부팅 보존을 검증했으며, Mac의 임시 설정 제거와 암호화 백업 복호화 및 전송 해시 일치를 확인했습니다. 별도 `mastodon-restore-lab`(192.168.64.7)에서 Docker, 게이트웨이 없는 내부 네트워크, Compose 정책, 필요한 네 종류 ARM64 이미지 확보까지 검증했습니다. **독립 VM의 암호화 백업 추출·덤프 판독·신규 PostgreSQL 14 클러스터의 SCRAM 호스트 인증 및 격리 기동은 성공했으며, 앱 DB/역할 생성·앱 TCP 비밀번호 검사까지 성공했고, 실제 데이터 복원·원본 계정 복구 시험은 아직 미완료**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
 
 [← 05A. UTM 설치 실측](05a-utm-verified-installation.md) · [05. 최초 설치](05-initial-setup.md) · [핸드북 목차](../../README.md)
 
@@ -329,7 +329,15 @@ macOS의 원본 암호화 백업 **`mastodon-install-20261026T022203Z.tar.gpg`**
 
 **검증 한계:** 새 클러스터가 초기화되고 보호된 상태로 대기하는 것까지 확인했습니다. 앱 역할 생성·앱 비밀번호를 이용한 TCP 인증·`pg_restore`·Web/Sidekiq/Streaming 기동은 **아직 수행하지 않았습니다**. 이 상태부터는 상태가 유지되므로 초기화 명령을 반복하지 않고 역할/DB 생성 단계로 진행합니다.
 
-## 31. 아직 '통과'라고 선언하면 안 되는 항목
+## 31. Checkpoint 24-16J-2 복원 앱 역할·빈 DB 생성
+
+전용 복원 VM에서 비공개 복구 디렉터리의 `.env.production`/`.env.postgres`와 실사용 작업 디렉터리의 사본이 일치하고, DB 컨테이너 `mastodon-restore-db-1`가 `healthy`, 네트워크가 `mastodon-restore-airgap` 단독이며 공개 포트가 없음을 검증했습니다. **사전 조회 시 앱 역할과 앱 데이터베이스는 각각 0개**였습니다.
+
+원본 비밀 설정의 `DB_PASS`를 콘솔과 CLI 인수에 노출하지 않고 PostgreSQL 표준 입력으로 전달해 **`mastodon` 제한 로그인 역할 및 해당 역할 소유의 `mastodon_production` 빈 DB**를 생성했습니다. TCP 검증에서 올바른 앱 비밀번호는 `ACCEPTED`, 잘못된 비밀번호는 `REJECTED`였고, `LOGIN|SUPERUSER|CREATEDB|CREATEROLE|REPLICATION|BYPASSRLS|OWNER` 결과는 **`1|0|0|0|0|0|1`**이었습니다. 데이터베이스에는 애플리케이션 테이블이 **0개**였고 Web·Sidekiq·Streaming은 시작하지 않았습니다. 마지막 출력은 **`CHECKPOINT 24-16J-2 APP DATABASE READY`**입니다.
+
+**판정:** 앱 역할과 데이터베이스 생성 및 SCRAM TCP 비밀번호 검증까지 통과했습니다. 실제 백업 덤프를 이용한 데이터·스키마 복원은 **아직 시작하지 않았습니다**. 상태 변경 작업이므로 24-16J-2 명령은 재실행하지 않고 다음 단계에서 트랜잭션 기반 `pg_restore` 및 원본 기준점 대조를 수행합니다.
+
+## 32. 아직 '통과'라고 선언하면 안 되는 항목
 
 - 특정 Sidekiq 개별 작업 성공 여부의 독립적 검증
 - **독립 VM 복원 및 앱 계정 로그인 검증**
