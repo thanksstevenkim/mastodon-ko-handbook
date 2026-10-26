@@ -1,6 +1,6 @@
 # 05B. 신규 설치의 비밀키·PostgreSQL 인증 안전화 실험
 
-> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·독립 Mac HTTPS·Safari 로그인·게시물/미디어 저장·재부팅 후 자동 복구 및 Safari 재검증·Mac 임시 설정 정리·암호화 백업 생성·Mac 사본 무결성·독립 복원 VM 수신·Docker 설치·격리 네트워크·Compose 정적 정책·ARM64 이미지 준비 검증 통과 (Checkpoint 24-2~24-16L-2, 2026-10-26).** 새 `mastodon-install-lab`에서 PostgreSQL SCRAM 인증과 Mastodon 주요 기능·재부팅 보존을 검증했으며, Mac의 임시 설정 제거와 암호화 백업 복호화 및 전송 해시 일치를 확인했습니다. 별도 `mastodon-restore-lab`(192.168.64.7)에서 Docker, 게이트웨이 없는 내부 네트워크, Compose 정책, 필요한 네 종류 ARM64 이미지 확보까지 검증했습니다. **독립 VM의 암호화 백업 추출·덤프 판독·신규 PostgreSQL 14 클러스터의 SCRAM 호스트 인증 및 격리 기동은 성공했으며, 앱 DB/역할 생성·앱 TCP 비밀번호 검사까지 성공했고, 실제 데이터베이스 복원은 성공했으며, 미디어 복원·격리 Redis 내부 연결 및 앱 환경 정적 검사까지 성공했으며, Web 로그인·이미지 표시·Sidekiq 검증은 아직 미완료**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
+> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·독립 Mac HTTPS·Safari 로그인·게시물/미디어 저장·재부팅 후 자동 복구 및 Safari 재검증·Mac 임시 설정 정리·암호화 백업 생성·Mac 사본 무결성·독립 복원 VM 수신·Docker 설치·격리 네트워크·Compose 정적 정책·ARM64 이미지 준비 검증 통과 (Checkpoint 24-2~24-16L-3, 2026-10-26).** 새 `mastodon-install-lab`에서 PostgreSQL SCRAM 인증과 Mastodon 주요 기능·재부팅 보존을 검증했으며, Mac의 임시 설정 제거와 암호화 백업 복호화 및 전송 해시 일치를 확인했습니다. 별도 `mastodon-restore-lab`(192.168.64.7)에서 Docker, 게이트웨이 없는 내부 네트워크, Compose 정책, 필요한 네 종류 ARM64 이미지 확보까지 검증했습니다. **독립 VM의 암호화 백업 추출·덤프 판독·신규 PostgreSQL 14 클러스터의 SCRAM 호스트 인증 및 격리 기동은 성공했으며, 앱 DB/역할 생성·앱 TCP 비밀번호 검사까지 성공했고, 실제 데이터베이스 복원은 성공했으며, 미디어 복원·격리 Redis 내부 연결 및 앱 환경 정적 검사까지 성공했으며, Web 로그인·이미지 표시·Sidekiq 검증은 아직 미완료**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
 
 [← 05A. UTM 설치 실측](05a-utm-verified-installation.md) · [05. 최초 설치](05-initial-setup.md) · [핸드북 목차](../../README.md)
 
@@ -385,7 +385,15 @@ macOS의 원본 암호화 백업 **`mastodon-install-20261026T022203Z.tar.gpg`**
 
 **다음 단계:** 원본 비밀값을 유지한 복원용 Web 전용 환경 오버라이드 및 Compose 정적 정책을 검사한 뒤 제한적으로 Web만 기동합니다.
 
-## 37. 아직 '통과'라고 선언하면 안 되는 항목
+## 37. Checkpoint 24-16L-3 복원 전용 Web 보안 오버라이드 정적 검증
+
+전용 복원 VM에서 DB와 Redis의 `healthy` 상태 및 격리 네트워크 연결을 검증하고, 기존 `compose.restore.yml`을 변경하지 않은 채 권한 `600`의 별도 `compose.web-guard.yml`을 생성했습니다. Web에만 **UID/GID `991:991`**, `cap_drop: ALL`, `no-new-privileges:true`, 재시작 `no`, 이미지 자동 다운로드 금지 `pull_policy: never`를 지정했습니다. Web의 SMTP 환경변수는 빈 값으로 덮고 `S3_ENABLED=false`, `ES_ENABLED=false`를 명시했습니다.
+
+두 Compose 파일 병합 결과를 `config --no-env-resolution --format json`으로 검사했으며 전체 서비스는 5개, 네트워크는 **외부 관리형 `mastodon-restore-airgap` 한 개**, 호스트 공개 포트는 **없음**으로 확인됐습니다. Web의 원본 `env_file` 참조와 `public/system` 바인드 마운트 경로도 유지됐습니다. PostgreSQL·Redis는 계속 `healthy`였고 앱 서비스는 시작되지 않았습니다. 최종 출력은 **`CHECKPOINT 24-16L-3 WEB GUARD PASSED`**입니다.
+
+**검증 범위:** 보안 오버라이드의 *정적 정책 검사*입니다. SMTP·S3·Elasticsearch에 대한 Web 설정 차단은 확인했지만 `DISABLE_FEDERATION`은 미설정 상태였으므로 연합 기능 자체가 꺼진 것은 아닙니다. **실제 외부 발신 차단은 격리 Docker 네트워크에 의존**하고, Web 런타임 동작 및 API/미디어 응답은 다음 단계에서 검증합니다.
+
+## 38. 아직 '통과'라고 선언하면 안 되는 항목
 
 - 특정 Sidekiq 개별 작업 성공 여부의 독립적 검증
 - **독립 VM 복원 및 앱 계정 로그인 검증**
