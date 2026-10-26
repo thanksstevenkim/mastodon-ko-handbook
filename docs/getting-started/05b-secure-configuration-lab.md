@@ -1,6 +1,6 @@
 # 05B. 신규 설치의 비밀키·PostgreSQL 인증 안전화 실험
 
-> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·독립 Mac HTTPS·Safari 로그인·게시물/미디어 저장·재부팅 후 자동 복구 및 Safari 재검증·Mac 임시 설정 정리·암호화 백업 생성·Mac 사본 무결성·독립 복원 VM 수신·Docker 설치·격리 네트워크·Compose 정적 정책·ARM64 이미지 준비 검증 통과 (Checkpoint 24-2~24-16N-2E, 2026-10-26).** 새 `mastodon-install-lab`에서 PostgreSQL SCRAM 인증과 Mastodon 주요 기능·재부팅 보존을 검증했으며, Mac의 임시 설정 제거와 암호화 백업 복호화 및 전송 해시 일치를 확인했습니다. 별도 `mastodon-restore-lab`(192.168.64.7)에서 Docker, 게이트웨이 없는 내부 네트워크, Compose 정책, 필요한 네 종류 ARM64 이미지 확보까지 검증했습니다. **독립 VM의 암호화 백업 추출·덤프 판독·신규 PostgreSQL 14 클러스터의 SCRAM 호스트 인증 및 격리 기동은 성공했으며, 앱 DB/역할 생성·앱 TCP 비밀번호 검사까지 성공했고, 실제 데이터베이스 복원은 성공했으며, 미디어 복원·격리 Redis 내부 연결 및 앱 환경 정적 검사까지 성공했으며, Web 기동·계정/게시물/미디어 내부 HTTP 제공·관리자 계정 준비 상태까지 검증했으나 원본 발급 비밀번호의 복원 환경 인증에도 성공했으나 브라우저 로그인·Sidekiq·Streaming 검증은 아직 미완료**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
+> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·독립 Mac HTTPS·Safari 로그인·게시물/미디어 저장·재부팅 후 자동 복구 및 Safari 재검증·Mac 임시 설정 정리·암호화 백업 생성·Mac 사본 무결성·독립 복원 VM 수신·Docker 설치·격리 네트워크·Compose 정적 정책·ARM64 이미지 준비 검증 통과 (Checkpoint 24-2~24-16O-1, 2026-10-26).** 새 `mastodon-install-lab`에서 PostgreSQL SCRAM 인증과 Mastodon 주요 기능·재부팅 보존을 검증했으며, Mac의 임시 설정 제거와 암호화 백업 복호화 및 전송 해시 일치를 확인했습니다. 별도 `mastodon-restore-lab`(192.168.64.7)에서 Docker, 게이트웨이 없는 내부 네트워크, Compose 정책, 필요한 네 종류 ARM64 이미지 확보까지 검증했습니다. **독립 VM의 암호화 백업 추출·덤프 판독·신규 PostgreSQL 14 클러스터의 SCRAM 호스트 인증 및 격리 기동은 성공했으며, 앱 DB/역할 생성·앱 TCP 비밀번호 검사까지 성공했고, 실제 데이터베이스 복원은 성공했으며, 미디어 복원·격리 Redis 내부 연결 및 앱 환경 정적 검사까지 성공했으며, Web 기동·계정/게시물/미디어 내부 HTTP 제공·관리자 계정 준비 상태까지 검증했으나 원본 발급 비밀번호의 복원 환경 인증에도 성공했으나 브라우저 로그인·Sidekiq 검증은 아직 미완료이며 Streaming의 실제 WebSocket 이벤트 전달 검증은 별도**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
 
 [← 05A. UTM 설치 실측](05a-utm-verified-installation.md) · [05. 최초 설치](05-initial-setup.md) · [핸드북 목차](../../README.md)
 
@@ -463,11 +463,19 @@ DB·Redis·Web만 남아 있고 Sidekiq·Streaming은 여전히 미기동, 호�
 
 **판정:** 원본 비밀번호가 원본 설치 VM뿐 아니라 독립 복원 VM에서도 그대로 유효하므로 **암호화된 계정 비밀번호의 실제 복원 및 인증 검증 성공**입니다. 앞서 수동 입력에 따른 `RESULT_PASSWORD_MISMATCH`는 발급 원본과 다른 입력이었을 가능성이 가장 높으며, 이제 비밀번호 자체에 대한 추가 점검이나 초기화·재복원은 필요하지 않습니다. 다만 이 결과는 Rails 비밀번호 검사이며 **웹 브라우저 세션 생성·로그인 완료를 증명하지는 않습니다.**
 
-## 47. 아직 '통과'라고 선언하면 안 되는 항목
+## 47. Checkpoint 24-16O-1 Streaming 단독 기동 및 격리 HTTP 검사
+
+독립 `mastodon-restore-lab`에서 DB·Redis·Web 세 컨테이너가 정상 실행 중임을 확인했습니다. Mastodon **v4.7.3 공식 ARM64 Streaming 이미지** 및 Compose 정적 정책(전용 격리 네트워크만 연결, 호스트 포트 0개, 재시작 정책 `no`)을 확인한 후 `docker compose up -d --no-deps --pull never streaming`으로 **Streaming 서비스만 추가 기동**했습니다.
+
+Streaming 컨테이너 내부 `http://127.0.0.1:4000/api/v1/streaming/health` 및 같은 격리 네트워크의 일회용 Python 컨테이너에서 `http://streaming:4000/api/v1/streaming/health` 모두 **HTTP 200 / 본문 `OK`**를 확인했습니다. 실행 중 Streaming은 `mastodon-restore-airgap`에만 연결됐고 기본 IPv4 경로와 호스트 공개 포트가 없었습니다. DB·Redis는 `healthy`, Web은 기존 컨테이너 ID 유지, Sidekiq는 아직 실행하지 않았으며 총 4개 컨테이너만 남았습니다. 마지막 출력은 **`CHECKPOINT 24-16O-1 STREAMING PASSED`**입니다.
+
+**판정:** Streaming 기동 및 HTTP 헬스체크는 통과했습니다. 인증된 WebSocket 구독과 실시간 이벤트 전달까지 검증한 것은 아닙니다. 다음 단계는 Sidekiq 시작 시 기존 작업을 무심코 처리하지 않도록 격리된 Redis의 대기열 현황을 확인하는 것입니다.
+
+## 48. 아직 '통과'라고 선언하면 안 되는 항목
 
 - 특정 Sidekiq 개별 작업 성공 여부의 독립적 검증
 - **독립 VM의 실제 브라우저 로그인 세션 검증** (DB·미디어·Web HTTP·관리자 비밀번호 복원은 검증 완료)
-- 격리된 Streaming 실제 기동 검증
+- 실제 WebSocket 구독·이벤트 전달은 별도 미검증 (기동·HTTP 헬스체크 통과)
 - 새 설치 절차를 외부 독자가 다른 환경에서 재현할 수 있는지
 
 위 항목을 실제 새 VM에서 확인한 **명령과 출력**이 있어야 검증 상태를 바꿉니다. 기존 Checkpoint 21~23의 DR 복구 성공과 혼동하지 않습니다.
