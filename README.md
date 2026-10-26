@@ -27,6 +27,7 @@
 - [백업 준비와 복구 검증 체크리스트](docs/operations/backup-readiness.md) — 백업·무결성 검사·실험 복원 점검
 - [독립 VM에서 Mastodon 4.7.3 전체 재해 복구 실험](docs/operations/disaster-recovery-utm.md) — **Checkpoint 21 테스트 검증**, PostgreSQL·미디어·HTTPS·로그인·홈 피드 복원
 - [Sidekiq 대기열이 쌓일 때](docs/operations/sidekiq-queues.md) — 연합 전송 작업과 장애 구분
+- [Sidekiq 정기 모니터링과 실패 작업 관리](docs/operations/sidekiq-monitoring.md) — 읽기 전용 점검, Retry·Dead 해석, systemd Timer 구성
 
 ### 장애 대응과 보안
 
