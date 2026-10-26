@@ -1,6 +1,6 @@
 # 05B. 신규 설치의 비밀키·PostgreSQL 인증 안전화 실험
 
-> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·독립 Mac HTTPS·Safari 로그인·게시물/미디어 저장·재부팅 후 자동 복구 및 Safari 재검증·Mac 임시 설정 정리·암호화 백업 생성·Mac 사본 무결성·독립 복원 VM 수신·Docker 설치·격리 네트워크·Compose 정적 정책·ARM64 이미지 준비 검증 통과 (Checkpoint 24-2~24-16J-3, 2026-10-26).** 새 `mastodon-install-lab`에서 PostgreSQL SCRAM 인증과 Mastodon 주요 기능·재부팅 보존을 검증했으며, Mac의 임시 설정 제거와 암호화 백업 복호화 및 전송 해시 일치를 확인했습니다. 별도 `mastodon-restore-lab`(192.168.64.7)에서 Docker, 게이트웨이 없는 내부 네트워크, Compose 정책, 필요한 네 종류 ARM64 이미지 확보까지 검증했습니다. **독립 VM의 암호화 백업 추출·덤프 판독·신규 PostgreSQL 14 클러스터의 SCRAM 호스트 인증 및 격리 기동은 성공했으며, 앱 DB/역할 생성·앱 TCP 비밀번호 검사까지 성공했고, 실제 데이터베이스 복원은 성공했으며, 미디어 실파일·Web 로그인·Sidekiq 검증은 아직 미완료**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
+> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·독립 Mac HTTPS·Safari 로그인·게시물/미디어 저장·재부팅 후 자동 복구 및 Safari 재검증·Mac 임시 설정 정리·암호화 백업 생성·Mac 사본 무결성·독립 복원 VM 수신·Docker 설치·격리 네트워크·Compose 정적 정책·ARM64 이미지 준비 검증 통과 (Checkpoint 24-2~24-16K-1, 2026-10-26).** 새 `mastodon-install-lab`에서 PostgreSQL SCRAM 인증과 Mastodon 주요 기능·재부팅 보존을 검증했으며, Mac의 임시 설정 제거와 암호화 백업 복호화 및 전송 해시 일치를 확인했습니다. 별도 `mastodon-restore-lab`(192.168.64.7)에서 Docker, 게이트웨이 없는 내부 네트워크, Compose 정책, 필요한 네 종류 ARM64 이미지 확보까지 검증했습니다. **독립 VM의 암호화 백업 추출·덤프 판독·신규 PostgreSQL 14 클러스터의 SCRAM 호스트 인증 및 격리 기동은 성공했으며, 앱 DB/역할 생성·앱 TCP 비밀번호 검사까지 성공했고, 실제 데이터베이스 복원은 성공했으며, 미디어 파일의 서비스 경로 배치·Web 로그인·Sidekiq 검증은 아직 미완료**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
 
 [← 05A. UTM 설치 실측](05a-utm-verified-installation.md) · [05. 최초 설치](05-initial-setup.md) · [핸드북 목차](../../README.md)
 
@@ -345,7 +345,15 @@ macOS의 원본 암호화 백업 **`mastodon-install-20261026T022203Z.tar.gpg`**
 
 **판정과 다음 검증:** 독립 클러스터에 데이터베이스의 스키마·마이그레이션·관리자·게시물·미디어 메타데이터를 실제 복원했으며 소유권을 검증했습니다. **미디어 실제 파일을 서비스 볼륨에 배치하지 않았고, 복원 후 로그인이나 이미지 표시도 시험하지 않았습니다.** 복원 로그는 성공 직후 제거됐고 원본 암호화 아카이브는 보존됩니다.
 
-## 33. 아직 '통과'라고 선언하면 안 되는 항목
+## 33. Checkpoint 24-16K-1 미디어 복원 사전 검사
+
+복원 VM에서 `recovery-payload/public/system`의 미디어는 **파일 4개 / 디렉터리 16개 / 합계 47,069바이트**였으며 원본 파일·디렉터리 권한 검사를 통과했습니다. 격리된 PostgreSQL 컨테이너는 계속 `healthy`였고 Web·Sidekiq·Streaming은 실행하지 않았습니다.
+
+첫 시도는 Compose JSON 출력과 Python here-document가 동시에 표준 입력을 사용하도록 구성된 **검증 명령 자체의 오류**로 `Verify Media Mount Policy` 단계에서 중단됐습니다. 미디어 사본 생성이나 파일 권한 변경은 없었습니다. 수정된 읽기 전용 검사에서 `web` 및 `sidekiq`의 볼륨 바인드 소스가 복원 작업 디렉터리의 `public/system`이며 대상은 `/mastodon/public/system`, 네트워크는 `airgap` 하나뿐임을 확인했습니다. 공식 Mastodon v4.7.3 ARM64 이미지의 실행 사용자 이름은 `mastodon`, **UID:GID는 `991:991`**이었습니다. 마지막에 DB 이외 컨테이너가 없음을 확인했고 **`CHECKPOINT 24-16K-1 MEDIA PREFLIGHT PASSED`**가 출력됐습니다.
+
+**판정:** 미디어 복사 전 파일·권한·Compose 마운트·앱 실행 사용자의 기준점 확보 완료. **실제 서비스 미디어 디렉터리는 아직 생성되지 않았고**, 다음 단계에서 원본 복구 파일은 변경하지 않은 채 소유자가 991:991인 전용 사본을 만들고 읽기/쓰기 검사를 수행합니다.
+
+## 34. 아직 '통과'라고 선언하면 안 되는 항목
 
 - 특정 Sidekiq 개별 작업 성공 여부의 독립적 검증
 - **독립 VM 복원 및 앱 계정 로그인 검증**
