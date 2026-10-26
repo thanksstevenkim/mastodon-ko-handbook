@@ -1,6 +1,6 @@
 # 05B. 신규 설치의 비밀키·PostgreSQL 인증 안전화 실험
 
-> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·독립 Mac HTTPS·Safari 로그인·게시물/미디어 저장·재부팅 후 자동 복구 및 Safari 재검증·Mac 임시 설정 정리·암호화 백업 생성·Mac 사본 무결성·독립 복원 VM 수신·Docker 설치·격리 네트워크·Compose 정적 정책·ARM64 이미지 준비 검증 통과 (Checkpoint 24-2~24-16L-4A, 2026-10-26).** 새 `mastodon-install-lab`에서 PostgreSQL SCRAM 인증과 Mastodon 주요 기능·재부팅 보존을 검증했으며, Mac의 임시 설정 제거와 암호화 백업 복호화 및 전송 해시 일치를 확인했습니다. 별도 `mastodon-restore-lab`(192.168.64.7)에서 Docker, 게이트웨이 없는 내부 네트워크, Compose 정책, 필요한 네 종류 ARM64 이미지 확보까지 검증했습니다. **독립 VM의 암호화 백업 추출·덤프 판독·신규 PostgreSQL 14 클러스터의 SCRAM 호스트 인증 및 격리 기동은 성공했으며, 앱 DB/역할 생성·앱 TCP 비밀번호 검사까지 성공했고, 실제 데이터베이스 복원은 성공했으며, 미디어 복원·격리 Redis 내부 연결 및 앱 환경 정적 검사까지 성공했으며, Web 실행과 내부 HTTP 헬스체크까지 확인했으나 복원된 게시물·이미지 표시·로그인·Sidekiq 검증은 아직 미완료**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
+> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·독립 Mac HTTPS·Safari 로그인·게시물/미디어 저장·재부팅 후 자동 복구 및 Safari 재검증·Mac 임시 설정 정리·암호화 백업 생성·Mac 사본 무결성·독립 복원 VM 수신·Docker 설치·격리 네트워크·Compose 정적 정책·ARM64 이미지 준비 검증 통과 (Checkpoint 24-2~24-16N-1, 2026-10-26).** 새 `mastodon-install-lab`에서 PostgreSQL SCRAM 인증과 Mastodon 주요 기능·재부팅 보존을 검증했으며, Mac의 임시 설정 제거와 암호화 백업 복호화 및 전송 해시 일치를 확인했습니다. 별도 `mastodon-restore-lab`(192.168.64.7)에서 Docker, 게이트웨이 없는 내부 네트워크, Compose 정책, 필요한 네 종류 ARM64 이미지 확보까지 검증했습니다. **독립 VM의 암호화 백업 추출·덤프 판독·신규 PostgreSQL 14 클러스터의 SCRAM 호스트 인증 및 격리 기동은 성공했으며, 앱 DB/역할 생성·앱 TCP 비밀번호 검사까지 성공했고, 실제 데이터베이스 복원은 성공했으며, 미디어 복원·격리 Redis 내부 연결 및 앱 환경 정적 검사까지 성공했으며, Web 기동·계정/게시물/미디어 내부 HTTP 제공·관리자 계정 준비 상태까지 검증했으나 실제 비밀번호 인증·브라우저 로그인·Sidekiq 검증은 아직 미완료**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
 
 [← 05A. UTM 설치 실측](05a-utm-verified-installation.md) · [05. 최초 설치](05-initial-setup.md) · [핸드북 목차](../../README.md)
 
@@ -409,7 +409,25 @@ DB·Redis는 모두 `healthy`, 격리 네트워크 단독 연결, 호스트 포�
 
 최종 출력은 **`CHECKPOINT 24-16L-4A RECHECK PASSED`**였습니다. **판정:** Web 최초 기동 및 격리 조건을 독립적으로 재확인했습니다. 복원된 실제 계정·게시물·미디어 HTTP 응답과 브라우저 로그인은 별도 검증 전입니다.
 
-## 40. 아직 '통과'라고 선언하면 안 되는 항목
+## 40. Checkpoint 24-16M 복원 콘텐츠 내부 HTTP 검증
+
+전용 복원 VM에서 DB·Redis·Web만 실행 중이며 DB·Redis는 `healthy`, Web은 `running` 상태임을 확인했습니다. 호스트 포트를 열지 않은 상태로 내부 격리 네트워크의 일회용 Python 컨테이너에서 Mastodon Web의 API·미디어 엔드포인트에 실제 HTTP 요청을 보냈습니다.
+
+`/api/v2/instance`는 **HTTP 200**이며 원본 로컬 도메인 `mastodon-install.test`와 일치했습니다. `/api/v1/accounts/lookup?acct=labadmin`은 **HTTP 200**, 사용자 검색에 성공했으며 해당 계정의 공개 게시물 API는 **2개**를 반환했습니다. 로컬 미디어 4개에 대응하는 `/system/...` HTTP 응답 **4/4**를 읽고, 파일별 응답 SHA-256과 복원 서비스 파일의 SHA-256이 모두 일치함을 검증했습니다. 총 미디어 용량은 **47,069바이트**입니다.
+
+일회용 검사 컨테이너 제거 후 DB·Redis·Web 세 서비스만 남았고 Sidekiq·Streaming은 시작하지 않았으며, 호스트 공개 포트도 열지 않았습니다. 최종 출력은 **`CHECKPOINT 24-16M FINAL VALIDATION PASSED`**입니다.
+
+**판정:** 실제 복원한 게시물 및 로컬 미디어 HTTP 전달이 정상임을 확인했습니다. 사용자 인증과 브라우저 세션은 별도 검증 전입니다.
+
+## 41. Checkpoint 24-16N-1 복원 관리자 계정 준비 상태
+
+격리된 Web 컨테이너 내부에서 Mastodon v4.7.3의 Rails 모델을 이용한 읽기 전용 검사를 실시했습니다. 로컬 `labadmin` 사용자 정확히 **1명**, 사용자 이메일 확인·승인·활성 상태·비밀번호 해시 존재·기능 상태·**관리자 역할**을 모두 확인했습니다. 관련 게시물 **2개**, 연결된 미디어 레코드 **1개**도 확인했으며 비밀번호 해시 값이나 개인 데이터는 출력하지 않았습니다.
+
+DB·Redis·Web만 남아 있고 Sidekiq·Streaming은 여전히 미기동, 호스트 포트 공개도 없었습니다. 최종 출력은 **`CHECKPOINT 24-16N-1 ADMIN READINESS PASSED`**입니다.
+
+**판정:** 복원한 관리자 계정이 활성 상태이며 관리자 권한과 인증 해시가 보존된 사실은 검증했습니다. 그러나 **실제 비밀번호 일치 확인, 로그인 세션, 2FA 흐름 및 브라우저 로그인**은 아직 증명되지 않았습니다. 다음에는 사용자 비밀번호를 공개 채팅이나 셸 인수·기록에 노출하지 않는 인증 테스트를 별도로 수행합니다.
+
+## 42. 아직 '통과'라고 선언하면 안 되는 항목
 
 - 특정 Sidekiq 개별 작업 성공 여부의 독립적 검증
 - **독립 VM 복원 및 앱 계정 로그인 검증**
