@@ -1,6 +1,6 @@
 # 05B. 신규 설치의 비밀키·PostgreSQL 인증 안전화 실험
 
-> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·독립 Mac HTTPS·Safari 로그인·게시물/미디어 저장·재부팅 후 자동 복구 및 Safari 재검증·Mac 임시 설정 정리·암호화 백업 생성·Mac 사본 무결성·독립 복원 VM 사본 수신·Docker 설치·격리 네트워크 및 Compose 정책 검증 통과 (Checkpoint 24-2~24-16G, 2026-10-26).** 새 `mastodon-install-lab`에서 SCRAM TCP 인증, 계정·키, 초기 스키마, 서비스, Caddy HTTPS와 Mac 접근을 검증했습니다. **재부팅 후 Safari HTTPS 접근·관리자 재인증/세션·기존 게시물과 이미지 표시·관리자 대시보드 접근은 사용자의 정상 동작 보고**로 확인했습니다. DB·미디어·설정의 재부팅 후 보존과 Mac 임시 CA/hosts 정리, 암호화 백업 복호화 및 Mac 사본 해시 일치도 검사했습니다. 별도 VM `mastodon-restore-lab`(192.168.64.7)에 백업을 전송하고 Docker의 강화된 내부 네트워크와 복원 전용 Compose의 서비스별 네트워크 정책을 검증했습니다. **실제 독립 DB/앱 복원과 Sidekiq 개별 작업 검증은 아직 미완료**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
+> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·독립 Mac HTTPS·Safari 로그인·게시물/미디어 저장·재부팅 후 자동 복구 및 Safari 재검증·Mac 임시 설정 정리·암호화 백업 생성·Mac 사본 무결성·독립 복원 VM 수신·Docker 설치·격리 네트워크·Compose 정적 정책·ARM64 이미지 준비 검증 통과 (Checkpoint 24-2~24-16H, 2026-10-26).** 새 `mastodon-install-lab`에서 PostgreSQL SCRAM 인증과 Mastodon 주요 기능·재부팅 보존을 검증했으며, Mac의 임시 설정 제거와 암호화 백업 복호화 및 전송 해시 일치를 확인했습니다. 별도 `mastodon-restore-lab`(192.168.64.7)에서 Docker, 게이트웨이 없는 내부 네트워크, Compose 정책, 필요한 네 종류 ARM64 이미지 확보까지 검증했습니다. **실제 DB 복원·Web/Sidekiq 기동·원본 계정 복구와 독립 복원 기능 시험은 아직 미완료**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
 
 [← 05A. UTM 설치 실측](05a-utm-verified-installation.md) · [05. 최초 설치](05-initial-setup.md) · [핸드북 목차](../../README.md)
 
@@ -305,7 +305,15 @@ macOS의 원본 암호화 백업 **`mastodon-install-20261026T022203Z.tar.gpg`**
 
 **판정:** 복원용 Compose 파일의 서비스·네트워크·포트·프로필·DB 호스트 인증 정책에 대한 *정적 검증* 통과입니다. 추가 컨테이너 연결이나 외부 발신 차단을 실행 중인 서비스에 대해 확인한 결과는 아니며, 아직 `.env` 파일도 복원하지 않았습니다. 다음에는 Docker 이미지를 미리 내려받고 이미지 플랫폼을 확인한 뒤 민감정보 복원 및 DB 검증을 단계적으로 진행합니다.
 
-## 28. 아직 '통과'라고 선언하면 안 되는 항목
+## 28. Checkpoint 24-16H 복원용 ARM64 컨테이너 이미지 준비
+
+별도 `mastodon-restore-lab`에서 Compose 정책이 참조하는 5개 서비스의 실제 이미지 4종—`postgres:14-alpine`, `redis:7-alpine`, `ghcr.io/mastodon/mastodon:v4.7.3`(Web·Sidekiq 공용), `ghcr.io/mastodon/mastodon-streaming:v4.7.3`—을 검증했습니다. 이미지별 `docker pull --platform linux/arm64`와 `docker image inspect` 결과 **네 이미지 모두 `linux/arm64`**였고 `Required images: 4 / 4`가 출력됐습니다.
+
+복원용 `compose.restore.yml`의 이미지 참조는 예상 태그와 정확히 일치했고, 네트워크는 **`airgap` 하나**였습니다. `mastodon-restore-airgap`이 **`bridge|true|false|isolated|0`** 조건을 만족하며 연결된 컨테이너가 없음을 확인했습니다. 실제 복원 컨테이너는 **0개**였고, 암호화된 백업의 SHA-256 **`9f97177c3d0e3b4307382f9bfb8a2731549ca26b109a7f0ba396c5b9d2bf7962`**도 일치했습니다. 출력 마지막은 **`CHECKPOINT 24-16H IMAGE PREPARATION PASSED`**였습니다.
+
+**판정:** 이미지 다운로드와 ARM64 플랫폼 검사까지 완료됐습니다. 이미지 태그를 기준으로 준비했으므로 향후 재현에서는 공급망 무결성을 위해 해당 시점의 이미지 digest도 확인·고정할 수 있습니다. 암호화 백업은 아직 복원 VM에서 복호화하지 않았고, PostgreSQL·Redis·Web·Sidekiq·Streaming 컨테이너는 실행하지 않았습니다.
+
+## 29. 아직 '통과'라고 선언하면 안 되는 항목
 
 - 특정 Sidekiq 개별 작업 성공 여부의 독립적 검증
 - **독립 VM 복원 및 앱 계정 로그인 검증**
