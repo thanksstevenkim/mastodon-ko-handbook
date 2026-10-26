@@ -1,6 +1,6 @@
 # 05B. 신규 설치의 비밀키·PostgreSQL 인증 안전화 실험
 
-> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·독립 Mac HTTPS·Safari 로그인·게시물/미디어 저장·실제 재부팅 후 자동 복구 및 Safari 재검증 통과 (Checkpoint 24-2~24-13C, 2026-10-26).** 새 `mastodon-install-lab`에서 SCRAM TCP 인증, 계정·키, 초기 스키마, 핵심 서비스, Caddy HTTPS와 Mac 접근을 검증했습니다. **재부팅 후 Safari HTTPS 접속·관리자 재인증/세션·기존 게시물과 이미지 표시·관리자 대시보드 접근은 사용자의 정상 동작 보고**로 확인했습니다. DB의 게시물 2개·연결된 미디어 1개, 파일·설정은 자동 재시작 뒤에도 유지됐습니다. **Sidekiq 개별 작업 성공, 별도 환경의 암호화 백업·독립 복원, 실험 종료 후 Mac 인증서/hosts 정리는 아직 미검증**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
+> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·독립 Mac HTTPS·Safari 로그인·게시물/미디어 저장·실제 재부팅 후 자동 복구 및 Safari 재검증·Mac 임시 설정 정리 검증 통과 (Checkpoint 24-2~24-14, 2026-10-26).** 새 `mastodon-install-lab`에서 SCRAM TCP 인증, 계정·키, 초기 스키마, 핵심 서비스, Caddy HTTPS와 Mac 접근을 검증했습니다. **재부팅 후 Safari HTTPS 접속·관리자 재인증/세션·기존 게시물과 이미지 표시·관리자 대시보드 접근은 사용자의 정상 동작 보고**로 확인했습니다. DB·미디어·설정의 재부팅 후 보존과 Mac의 임시 실험 CA 신뢰 및 hosts 항목 제거까지 검사했습니다. **Sidekiq 개별 작업 성공과 별도 환경의 암호화 백업·독립 복원은 아직 미검증**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
 
 [← 05A. UTM 설치 실측](05a-utm-verified-installation.md) · [05. 최초 설치](05-initial-setup.md) · [핸드북 목차](../../README.md)
 
@@ -227,10 +227,15 @@ Mac 로그인 키체인에 **실험용 로컬 공개 CA 인증서**를 사용자
 
 임시 Mac 로그인 키체인의 테스트 CA 신뢰와 `/etc/hosts`의 `192.168.64.6 mastodon-install.test # MASTODON-INSTALL-LAB-20261026` 항목은 24-13C 시점에 유지돼 있었습니다. **정확히 해당 실험용 CA와 hosts 항목만 제거하고 검증하는 정리 작업은 다음 체크포인트**입니다. 공개 루트 인증서의 SHA-256은 `b573d28ca562ea30284e3218db74298222a0a50b24d805530a186d6033c8b07b`이며, Mac의 다른 `mastodon.test` 환경과 CA, VM의 사설키, 원본/DR/운영 서버 설정은 변경하지 않습니다.
 
-## 17. 아직 '통과'라고 선언하면 안 되는 항목
+## 17. Checkpoint 24-14 Mac 임시 CA/hosts 설정 정리
+
+실험자는 Mac에서 실험용 Caddy 공개 루트 CA 파일의 SHA-256 **`b573d28ca562ea30284e3218db74298222a0a50b24d805530a186d6033c8b07b`**와 로그인 키체인에 일치하는 인증서가 하나 존재함을 검사했습니다. `/etc/hosts`에서 **`192.168.64.6 mastodon-install.test # MASTODON-INSTALL-LAB-20261026`** 항목도 한 건임을 확인했습니다. 그 뒤 해당 인증서에 대한 사용자 신뢰 및 로그인 키체인 인증서를 `security delete-certificate`로 삭제하고, `/etc/hosts`를 별도 파일에 백업한 뒤 실험용 줄만 제거했습니다. DNS 캐시를 새로고침하고, 해당 줄과 해당 인증서 지문이 더는 나타나지 않는 것을 검증했습니다. 클립보드의 실험 비밀번호도 다른 문자열로 덮어썼습니다.
+
+**판정:** 출력에 `CHECKPOINT 24-14 MAC CLEANUP PASSED`가 확인됐습니다. 그 외 `mastodon.test` 등 다른 실험 환경의 hosts 및 인증서 항목은 변경 대상이 아니었습니다. Mac에는 공개 CA 파일과 `/etc/hosts` 정리 전 백업이 남아 있고, 새 실험 VM의 Caddy 인증서와 비밀키·기존 계정은 건드리지 않았습니다. GitHub에 비밀값이나 Mac의 실제 키체인 데이터를 기록하지 않았습니다.
+
+## 18. 아직 '통과'라고 선언하면 안 되는 항목
 
 - 특정 Sidekiq 개별 작업 성공 여부의 독립적 검증
-- Mac 임시 인증서 신뢰 및 호스트 항목의 정확한 원상복구
 - 새 실험 환경의 **암호화 백업과 독립 복원**
 - 새 설치 절차를 외부 독자가 다른 환경에서 재현할 수 있는지
 
