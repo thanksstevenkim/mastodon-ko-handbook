@@ -1,6 +1,6 @@
 # 05B. 신규 설치의 비밀키·PostgreSQL 인증 안전화 실험
 
-> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·독립 Mac HTTPS·Safari 로그인·게시물/미디어 저장·재부팅 후 자동 복구 및 Safari 재검증·Mac 임시 설정 정리·암호화 백업 생성·Mac 사본 무결성·독립 복원 VM 신규 설치 검증 통과 (Checkpoint 24-2~24-16B, 2026-10-26).** 새 `mastodon-install-lab`에서 SCRAM TCP 인증, 계정·키, 초기 스키마, 서비스, Caddy HTTPS와 Mac 접근을 검증했습니다. **재부팅 후 Safari HTTPS 접근·관리자 재인증/세션·기존 게시물과 이미지 표시·관리자 대시보드 접근은 사용자의 정상 동작 보고**로 확인했습니다. DB·미디어·설정의 재부팅 후 보존과 Mac 임시 CA/hosts 정리, 암호화 백업 복호화 및 Mac 사본 해시 일치도 검사했습니다. 네 번째 격리된 VM `mastodon-restore-lab`의 OS·자원·IP·SSH를 점검했습니다. **복원 VM으로 암호화 백업 전송, 실제 독립 복원, Sidekiq 개별 작업 검증은 아직 미완료**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
+> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·독립 Mac HTTPS·Safari 로그인·게시물/미디어 저장·재부팅 후 자동 복구 및 Safari 재검증·Mac 임시 설정 정리·암호화 백업 생성·Mac 사본 무결성·독립 복원 VM 신규 설치 및 암호화 사본 수신 검증 통과 (Checkpoint 24-2~24-16C, 2026-10-26).** 새 `mastodon-install-lab`에서 SCRAM TCP 인증, 계정·키, 초기 스키마, 서비스, Caddy HTTPS와 Mac 접근을 검증했습니다. **재부팅 후 Safari HTTPS 접근·관리자 재인증/세션·기존 게시물과 이미지 표시·관리자 대시보드 접근은 사용자의 정상 동작 보고**로 확인했습니다. DB·미디어·설정의 재부팅 후 보존과 Mac 임시 CA/hosts 정리, 암호화 백업 복호화 및 Mac 사본 해시 일치도 검사했습니다. 네 번째 별도 VM `mastodon-restore-lab`(192.168.64.7)에 백업을 전송하고 SHA-256 일치를 확인했습니다. **실제 독립 복원, 복원 환경의 네트워크 격리, Sidekiq 개별 작업 검증은 아직 미완료**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
 
 [← 05A. UTM 설치 실측](05a-utm-verified-installation.md) · [05. 최초 설치](05-initial-setup.md) · [핸드북 목차](../../README.md)
 
@@ -273,7 +273,13 @@ macOS `arm64` 호스트에서 `~/Documents/Mastodon-Backups/Lab/Secure-Install/m
 
 **판정:** 신규 VM의 식별·자원·운영체제·SSH 준비 상태가 검증됐습니다. 가상 디스크 전체와 루트 LVM 크기는 서로 다르지만 현 단계에서 자동 확장하거나 기존 VM을 변경하지 않습니다. **암호화 백업 전송, Docker 설치, 민감정보 복호화, DB 복원 및 서비스 시작은 아직 수행하지 않았습니다.** 다음 단계에서 백업 원본 SHA-256과 수신 파일의 SHA-256 일치를 확인하고, 외부 ActivityPub/SMTP 발신을 차단한 뒤 서비스 복원을 시도합니다.
 
-## 23. 아직 '통과'라고 선언하면 안 되는 항목
+## 23. Checkpoint 24-16C 독립 VM 암호화 백업 전송
+
+macOS의 원본 암호화 백업 **`mastodon-install-20261026T022203Z.tar.gpg`** SHA-256이 기존 기록 **`9f97177c3d0e3b4307382f9bfb8a2731549ca26b109a7f0ba396c5b9d2bf7962`**와 일치했습니다. SSH를 통해 전용 복원 VM `mastodon-restore-lab`(192.168.64.7), 사용자 `steven`, ARM64임을 확인하고, 권한 `700`인 개인 수신 디렉터리 `~/mastodon-restore-incoming/`에 암호화 파일만 전송했습니다. 수신한 임시 파일의 SHA-256도 같아 `Restore VM SHA256: MATCHED`를 확인했으며 파일 권한 `600`으로 최종 이름으로 변경했습니다. 출력에 **`CHECKPOINT 24-16C TRANSFER VERIFIED`**가 표시됐고 파일 크기는 **492KB**였습니다.
+
+**판정:** 암호화 아카이브는 원본 설치 VM → Mac → 독립 복원 VM의 각 파일 경로에서 전송 무결성이 확인됐습니다. 아직 **복호화·Docker 설치·DB 복원·원본 계정 로그인·외부 네트워크 격리**는 수행하지 않았습니다. 복원 전에는 발신 ActivityPub·SMTP 등 외부 통신을 차단할 네트워크 구성을 설계·검증해야 하며, 기존 VM 및 실운영 서버에 간섭하지 않아야 합니다.
+
+## 24. 아직 '통과'라고 선언하면 안 되는 항목
 
 - 특정 Sidekiq 개별 작업 성공 여부의 독립적 검증
 - **독립 VM 복원 및 앱 계정 로그인 검증**
