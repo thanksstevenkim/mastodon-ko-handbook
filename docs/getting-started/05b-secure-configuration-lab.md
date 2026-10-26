@@ -1,6 +1,6 @@
 # 05B. 신규 설치의 비밀키·PostgreSQL 인증 안전화 실험
 
-> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·독립 Mac HTTPS·Safari 로그인·게시물/미디어 저장·재부팅 후 자동 복구 및 Safari 재검증·Mac 임시 설정 정리·암호화 백업 생성·Mac 사본 무결성·독립 복원 VM 암호화 사본 수신·Docker 설치·전용 격리 네트워크 실측 검증 통과 (Checkpoint 24-2~24-16F, 2026-10-26).** 새 `mastodon-install-lab`에서 SCRAM TCP 인증, 계정·키, 초기 스키마, 서비스, Caddy HTTPS와 Mac 접근을 검증했습니다. **재부팅 후 Safari HTTPS 접근·관리자 재인증/세션·기존 게시물과 이미지 표시·관리자 대시보드 접근은 사용자의 정상 동작 보고**로 확인했습니다. DB·미디어·설정의 재부팅 후 보존과 Mac 임시 CA/hosts 정리, 암호화 백업 복호화 및 Mac 사본 해시 일치도 검사했습니다. 별도 VM `mastodon-restore-lab`(192.168.64.7)에 암호화 백업을 전송하여 해시 일치를 확인하고 Docker 및 `gateway_mode_ipv4=isolated` 내부 네트워크의 기본 경로 제거·단일 외부 TCP 차단을 검증했습니다. **실제 독립 DB/앱 복원, 서비스별 Compose 네트워크 정책, Sidekiq 개별 작업 검증은 아직 미완료**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
+> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·독립 Mac HTTPS·Safari 로그인·게시물/미디어 저장·재부팅 후 자동 복구 및 Safari 재검증·Mac 임시 설정 정리·암호화 백업 생성·Mac 사본 무결성·독립 복원 VM 사본 수신·Docker 설치·격리 네트워크 및 Compose 정책 검증 통과 (Checkpoint 24-2~24-16G, 2026-10-26).** 새 `mastodon-install-lab`에서 SCRAM TCP 인증, 계정·키, 초기 스키마, 서비스, Caddy HTTPS와 Mac 접근을 검증했습니다. **재부팅 후 Safari HTTPS 접근·관리자 재인증/세션·기존 게시물과 이미지 표시·관리자 대시보드 접근은 사용자의 정상 동작 보고**로 확인했습니다. DB·미디어·설정의 재부팅 후 보존과 Mac 임시 CA/hosts 정리, 암호화 백업 복호화 및 Mac 사본 해시 일치도 검사했습니다. 별도 VM `mastodon-restore-lab`(192.168.64.7)에 백업을 전송하고 Docker의 강화된 내부 네트워크와 복원 전용 Compose의 서비스별 네트워크 정책을 검증했습니다. **실제 독립 DB/앱 복원과 Sidekiq 개별 작업 검증은 아직 미완료**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
 
 [← 05A. UTM 설치 실측](05a-utm-verified-installation.md) · [05. 최초 설치](05-initial-setup.md) · [핸드북 목차](../../README.md)
 
@@ -297,7 +297,15 @@ macOS의 원본 암호화 백업 **`mastodon-install-20261026T022203Z.tar.gpg`**
 
 **판정과 범위:** 이전 단계보다 강화된 복원용 네트워크에서 *호스트 브리지 IPv4 및 기본 IPv4 경로 부재*를 입증했습니다. 이는 시험한 IPv4 TCP 경로의 차단을 보여줄 뿐 Docker 소켓 마운트, 컨테이너의 추가 네트워크 연결, 호스트 네트워크 공유, 사용자 정의 프록시 등 다른 우회 경로까지 검증했다는 의미는 아닙니다. **실제 복원 서비스를 기동하기 전에 개별 서비스가 오직 이 외부 관리형 Docker 네트워크에만 연결됨을 `docker compose config`로 확인**해야 합니다. 원본 백업은 아직 암호화 상태이며 DB·Web·Sidekiq를 실행하지 않았습니다.
 
-## 27. 아직 '통과'라고 선언하면 안 되는 항목
+## 27. Checkpoint 24-16G 복원 전용 Compose 정적 정책 검증
+
+`mastodon-restore-lab`에서 `mastodon-restore-airgap`의 `bridge|true|false|isolated` 설정, 네트워크 연결 컨테이너 0개, Docker 컨테이너 0개 및 암호화 백업의 SHA-256을 다시 확인했습니다. 전용 개인 디렉터리 `~/mastodon-restore-secure-lab/`(권한 `700`)에 **원본 Compose와 독립된** `compose.restore.yml`(권한 `600`)을 작성했습니다. Compose 프로젝트명은 `mastodon-restore`, 서비스는 PostgreSQL 14·Redis 7·Mastodon Web·Sidekiq·Streaming의 **다섯 개**, 네트워크는 외부 관리형 `mastodon-restore-airgap`을 참조하는 **`airgap` 한 개뿐**입니다.
+
+`docker compose --profile app config --no-env-resolution --format json`의 렌더링 결과를 Python으로 검증했습니다. 모든 서비스가 **`airgap`에만 연결**되고, 호스트 포트 공개, 특권 모드, 추가 장치·Docker 소켓 마운트 등 지정된 금지 속성이 없으며, 모든 서비스 재시작 정책은 `no`입니다. DB는 `POSTGRES_HOST_AUTH_METHOD=scram-sha-256`, `POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256`을 명시합니다. Web·Sidekiq·Streaming은 `app` 프로필에 포함됐습니다. 출력은 **`Services: 5`, `Networks: 1`, `Compose policy: VERIFIED`, `CHECKPOINT 24-16G COMPOSE POLICY PASSED`**였으며, 기동된 컨테이너는 **0개**, 원본 백업은 **암호화 상태**로 유지됐습니다.
+
+**판정:** 복원용 Compose 파일의 서비스·네트워크·포트·프로필·DB 호스트 인증 정책에 대한 *정적 검증* 통과입니다. 추가 컨테이너 연결이나 외부 발신 차단을 실행 중인 서비스에 대해 확인한 결과는 아니며, 아직 `.env` 파일도 복원하지 않았습니다. 다음에는 Docker 이미지를 미리 내려받고 이미지 플랫폼을 확인한 뒤 민감정보 복원 및 DB 검증을 단계적으로 진행합니다.
+
+## 28. 아직 '통과'라고 선언하면 안 되는 항목
 
 - 특정 Sidekiq 개별 작업 성공 여부의 독립적 검증
 - **독립 VM 복원 및 앱 계정 로그인 검증**
