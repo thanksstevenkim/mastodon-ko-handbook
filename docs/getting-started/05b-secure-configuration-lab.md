@@ -1,6 +1,6 @@
 # 05B. 신규 설치의 비밀키·PostgreSQL 인증 안전화 실험
 
-> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키 존재 및 DB 스키마 초기화 검증 통과 (Checkpoint 24-2~24-7, 2026-10-26).** 새 `mastodon-install-lab`에서 SCRAM TCP 인증·앱 계정 권한·필수 키 6개와 Rails 초기 스키마를 검증했습니다. **Web·Sidekiq·Streaming 최초 실행, HTTPS 로그인, 신규 실험 VM 재부팅·독립 복원은 아직 미검증**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
+> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스 기동 검증 통과 (Checkpoint 24-2~24-8, 2026-10-26).** 새 `mastodon-install-lab`에서 SCRAM TCP 인증·앱 계정 권한·필수 키 6개·Rails 초기 스키마 및 Web·Sidekiq·Streaming 헬스체크를 검증했습니다. **로컬 HTTPS·관리자 로그인·신규 실험 VM 재부팅·독립 복원은 아직 미검증**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
 
 [← 05A. UTM 설치 실측](05a-utm-verified-installation.md) · [05. 최초 설치](05-initial-setup.md) · [핸드북 목차](../../README.md)
 
@@ -126,11 +126,22 @@ Mastodon 앱 키는 **v4.7.3 이미지 내부의 공식 생성 작업**을 사�
 - **24-7 비밀키 저장 실측:** 호스트 `.env.production`의 필수 키 6개가 각각 예상 형식으로 1개씩 존재하고 서로 다른 값을 가진 것을 재검증했습니다. 실제 비밀값을 출력하지 않았으며 Git 제외 및 Compose 구문 검사도 통과했습니다. **저장된 키의 존재·형식 검증이지 암호화 키의 모든 기능 테스트는 아닙니다.**
 - **24-7 스키마 초기화:** PostgreSQL 앱 DB의 기존 `public` 테이블 **0개** 확인 후 Redis 7을 시작해 Healthy / `PONG`을 확인했습니다. 공식 Web 이미지의 신규 Rails `db:migrate:setup` 작업이 오류 없이 끝났고, 사후 점검에서 `public` 테이블 **118개**, `accounts`·`users`·`user_roles` 존재, `schema_migrations` **615개**, 사용자 역할 시드 **4개**를 확인했습니다.
 
-## 7. 아직 '통과'라고 선언하면 안 되는 항목
+## 7. Checkpoint 24-8 핵심 서비스 최초 기동
 
-- Web·Sidekiq·Streaming 최초 기동, Health 검사, 미디어 바인드 마운트 및 쓰기 권한
-- 브라우저 HTTPS 로그인, 게시물·이미지 저장 및 백그라운드 작업의 실제 동작
-- 별도 실험 VM 재부팅 후 영속성·백업 복원
+기존 PostgreSQL·Redis 두 서비스의 `healthy`, 신규 앱 컨테이너 부재, 공식 Mastodon v4.7.3 소스 커밋 및 Compose 구문 검사를 사전 확인했습니다. Mastodon 이미지 내부 `id`로 UID:GID가 **991:991**임을 확인하고, 새 미디어 저장 디렉터리 `public/system`을 이 소유자와 `755` 권한으로 만들었습니다.
+
+- Web·Sidekiq·Streaming 최초 기동 후 **DB·Redis 포함 다섯 서비스 전부 `healthy`**.
+- Web·Sidekiq에 각각 동일한 호스트 `public/system`이 `/mastodon/public/system`으로 바인드 마운트된 것을 실제 Docker inspect로 확인.
+- Web 포트 **`127.0.0.1:3000`**, Streaming 포트 **`127.0.0.1:4000`**으로만 바인딩된 상태 확인.
+- 게스트 VM의 Web `/health` 및 Streaming `/api/v1/streaming/health`에서 각각 **`OK`**.
+
+이는 **앱 서버가 실행되고 최소 헬스체크가 성공했다는 증거**입니다. 브라우저 로그인, 실제 미디어 쓰기 및 외부 연합 송수신 성공을 의미하지 않습니다.
+
+## 8. 아직 '통과'라고 선언하면 안 되는 항목
+
+- 로컬 Caddy HTTPS 연결·인증서 신뢰와 관리자 로그인
+- 게시물·이미지 저장 및 Sidekiq 백그라운드 작업의 실제 기능
+- 별도 실험 VM 재시작 후 영속성·백업 복원
 - 새 설치 절차를 외부 독자가 다른 환경에서 재현할 수 있는지
 
 위 항목을 실제 새 VM에서 확인한 **명령과 출력**이 있어야 검증 상태를 바꿉니다. 기존 Checkpoint 21~23의 DR 복구 성공과 혼동하지 않습니다.
