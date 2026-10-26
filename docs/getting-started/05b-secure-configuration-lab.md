@@ -1,6 +1,6 @@
 # 05B. 신규 설치의 비밀키·PostgreSQL 인증 안전화 실험
 
-> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·독립 Mac HTTPS·Safari 로그인·게시물/미디어 저장·재부팅 후 자동 복구 및 Safari 재검증·Mac 임시 설정 정리·암호화 백업 생성·Mac 사본 무결성·독립 복원 VM 수신·Docker 설치·격리 네트워크·Compose 정적 정책·ARM64 이미지 준비 검증 통과 (Checkpoint 24-2~24-16K-2, 2026-10-26).** 새 `mastodon-install-lab`에서 PostgreSQL SCRAM 인증과 Mastodon 주요 기능·재부팅 보존을 검증했으며, Mac의 임시 설정 제거와 암호화 백업 복호화 및 전송 해시 일치를 확인했습니다. 별도 `mastodon-restore-lab`(192.168.64.7)에서 Docker, 게이트웨이 없는 내부 네트워크, Compose 정책, 필요한 네 종류 ARM64 이미지 확보까지 검증했습니다. **독립 VM의 암호화 백업 추출·덤프 판독·신규 PostgreSQL 14 클러스터의 SCRAM 호스트 인증 및 격리 기동은 성공했으며, 앱 DB/역할 생성·앱 TCP 비밀번호 검사까지 성공했고, 실제 데이터베이스 복원은 성공했으며, 미디어 파일의 서비스 경로 배치는 성공했으며, Web 로그인·이미지 표시·Sidekiq 검증은 아직 미완료**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
+> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·독립 Mac HTTPS·Safari 로그인·게시물/미디어 저장·재부팅 후 자동 복구 및 Safari 재검증·Mac 임시 설정 정리·암호화 백업 생성·Mac 사본 무결성·독립 복원 VM 수신·Docker 설치·격리 네트워크·Compose 정적 정책·ARM64 이미지 준비 검증 통과 (Checkpoint 24-2~24-16L-1, 2026-10-26).** 새 `mastodon-install-lab`에서 PostgreSQL SCRAM 인증과 Mastodon 주요 기능·재부팅 보존을 검증했으며, Mac의 임시 설정 제거와 암호화 백업 복호화 및 전송 해시 일치를 확인했습니다. 별도 `mastodon-restore-lab`(192.168.64.7)에서 Docker, 게이트웨이 없는 내부 네트워크, Compose 정책, 필요한 네 종류 ARM64 이미지 확보까지 검증했습니다. **독립 VM의 암호화 백업 추출·덤프 판독·신규 PostgreSQL 14 클러스터의 SCRAM 호스트 인증 및 격리 기동은 성공했으며, 앱 DB/역할 생성·앱 TCP 비밀번호 검사까지 성공했고, 실제 데이터베이스 복원은 성공했으며, 미디어 파일과 격리 Redis 기동·DB/Redis 내부 연결 검사까지 성공했으며, Web 로그인·이미지 표시·Sidekiq 검증은 아직 미완료**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
 
 [← 05A. UTM 설치 실측](05a-utm-verified-installation.md) · [05. 최초 설치](05-initial-setup.md) · [핸드북 목차](../../README.md)
 
@@ -363,7 +363,17 @@ macOS의 원본 암호화 백업 **`mastodon-install-20261026T022203Z.tar.gpg`**
 
 **판정:** 독립 복원 VM의 DB 복원 및 서비스용 미디어 파일·권한 준비까지 완료했습니다. 아직 Web에서 미디어 URL을 실제 제공하는지, 복구 계정의 웹 로그인과 스트리밍·백그라운드 작업이 정상인지 검증하지 않았습니다.
 
-## 35. 아직 '통과'라고 선언하면 안 되는 항목
+## 35. Checkpoint 24-16L-1 격리 Redis 기동·내부 연결
+
+전용 복원 VM에서 기존 PostgreSQL `mastodon-restore-db-1`의 `healthy` 상태 및 컨테이너 ID를 확인하고, 신규 Redis 데이터 디렉터리가 없으며 `mastodon-restore-airgap`에 DB 컨테이너만 연결되어 있음을 검증했습니다. Redis 7 ARM64 이미지, Compose의 단일 `airgap` 네트워크·호스트 포트 없음·비자동 재시작·`/data` 바인드 정책도 확인했습니다.
+
+`docker compose up -d --no-deps --pull never redis`로 Redis **한 서비스만 시작**했고, `mastodon-restore-redis-1`가 `healthy`, `redis-cli ping` 응답이 **`PONG`**임을 확인했습니다. Docker 네트워크와 공개 포트를 검사해 Redis가 `mastodon-restore-airgap`에만 연결되고 호스트 공개 포트가 없음을 확인했습니다.
+
+해당 네트워크의 일회용 시험 컨테이너에서 내부 `db:5432`와 `redis:6379` 모두 **`CONNECTED`**, `1.1.1.1:443` 외부 TCP는 **`BLOCKED`**였습니다. 이후 시험 컨테이너가 제거됐고 PostgreSQL 컨테이너 ID·상태가 유지됐으며 DB와 Redis **2개 컨테이너만 존재**하고 Web·Sidekiq·Streaming은 시작하지 않았습니다. 마지막 출력은 **`CHECKPOINT 24-16L-1 REDIS READY`**였습니다.
+
+**판정의 범위:** 격리 네트워크의 내부 서비스 TCP 및 시험한 외부 TCP 목적지 차단, Redis 자체 헬스체크를 검증했습니다. 이후 원본 앱 설정의 DB·Redis 접속 값과 SMTP·외부 스토리지·연합 기능 설정을 **비밀값 노출 없이 정적 점검**한 다음 Web 기동 여부를 결정합니다.
+
+## 36. 아직 '통과'라고 선언하면 안 되는 항목
 
 - 특정 Sidekiq 개별 작업 성공 여부의 독립적 검증
 - **독립 VM 복원 및 앱 계정 로그인 검증**
