@@ -1,6 +1,6 @@
 # 05B. 신규 설치의 비밀키·PostgreSQL 인증 안전화 실험
 
-> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·독립 Mac HTTPS·Safari 로그인·게시물/미디어 저장·재부팅 후 자동 복구 및 Safari 재검증·Mac 임시 설정 정리·암호화 백업 생성·Mac 사본 무결성·독립 복원 VM 수신·Docker 설치·격리 네트워크·Compose 정적 정책·ARM64 이미지 준비 검증 통과 (Checkpoint 24-2~24-16L-3, 2026-10-26).** 새 `mastodon-install-lab`에서 PostgreSQL SCRAM 인증과 Mastodon 주요 기능·재부팅 보존을 검증했으며, Mac의 임시 설정 제거와 암호화 백업 복호화 및 전송 해시 일치를 확인했습니다. 별도 `mastodon-restore-lab`(192.168.64.7)에서 Docker, 게이트웨이 없는 내부 네트워크, Compose 정책, 필요한 네 종류 ARM64 이미지 확보까지 검증했습니다. **독립 VM의 암호화 백업 추출·덤프 판독·신규 PostgreSQL 14 클러스터의 SCRAM 호스트 인증 및 격리 기동은 성공했으며, 앱 DB/역할 생성·앱 TCP 비밀번호 검사까지 성공했고, 실제 데이터베이스 복원은 성공했으며, 미디어 복원·격리 Redis 내부 연결 및 앱 환경 정적 검사까지 성공했으며, Web 로그인·이미지 표시·Sidekiq 검증은 아직 미완료**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
+> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·독립 Mac HTTPS·Safari 로그인·게시물/미디어 저장·재부팅 후 자동 복구 및 Safari 재검증·Mac 임시 설정 정리·암호화 백업 생성·Mac 사본 무결성·독립 복원 VM 수신·Docker 설치·격리 네트워크·Compose 정적 정책·ARM64 이미지 준비 검증 통과 (Checkpoint 24-2~24-16L-4, 2026-10-26).** 새 `mastodon-install-lab`에서 PostgreSQL SCRAM 인증과 Mastodon 주요 기능·재부팅 보존을 검증했으며, Mac의 임시 설정 제거와 암호화 백업 복호화 및 전송 해시 일치를 확인했습니다. 별도 `mastodon-restore-lab`(192.168.64.7)에서 Docker, 게이트웨이 없는 내부 네트워크, Compose 정책, 필요한 네 종류 ARM64 이미지 확보까지 검증했습니다. **독립 VM의 암호화 백업 추출·덤프 판독·신규 PostgreSQL 14 클러스터의 SCRAM 호스트 인증 및 격리 기동은 성공했으며, 앱 DB/역할 생성·앱 TCP 비밀번호 검사까지 성공했고, 실제 데이터베이스 복원은 성공했으며, 미디어 복원·격리 Redis 내부 연결 및 앱 환경 정적 검사까지 성공했으며, Web 실행과 내부 HTTP 헬스체크까지 확인했으나 복원된 게시물·이미지 표시·로그인·Sidekiq 검증은 아직 미완료**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
 
 [← 05A. UTM 설치 실측](05a-utm-verified-installation.md) · [05. 최초 설치](05-initial-setup.md) · [핸드북 목차](../../README.md)
 
@@ -393,7 +393,15 @@ macOS의 원본 암호화 백업 **`mastodon-install-20261026T022203Z.tar.gpg`**
 
 **검증 범위:** 보안 오버라이드의 *정적 정책 검사*입니다. SMTP·S3·Elasticsearch에 대한 Web 설정 차단은 확인했지만 `DISABLE_FEDERATION`은 미설정 상태였으므로 연합 기능 자체가 꺼진 것은 아닙니다. **실제 외부 발신 차단은 격리 Docker 네트워크에 의존**하고, Web 런타임 동작 및 API/미디어 응답은 다음 단계에서 검증합니다.
 
-## 38. 아직 '통과'라고 선언하면 안 되는 항목
+## 38. Checkpoint 24-16L-4 격리 Mastodon Web 첫 기동
+
+`mastodon-restore-lab`에서 PostgreSQL·Redis가 모두 `healthy`이고 두 컨테이너만 존재함을 사전 확인했습니다. 기존 `compose.restore.yml` 및 Web 전용 `compose.web-guard.yml`을 병합한 정적 보안 정책은 Web UID:GID `991:991`, 단일 `airgap` 네트워크, 호스트 공개 포트 없음, S3·Elasticsearch·SMTP 오버라이드 설정을 만족했습니다.
+
+`docker compose up -d --no-deps --pull never web`으로 **Web만 기동**했고, `mastodon-restore-web-1` 내부 `http://127.0.0.1:3000/health`에서 **`200 OK`**, 별도 격리 네트워크 시험 컨테이너에서 `http://web:3000/health` 또한 **`200 OK`**였습니다. 실행 중 Web의 UID:GID는 `991:991`, 네트워크는 `mastodon-restore-airgap` 단독, 호스트 공개 포트 0개를 확인했습니다. 최종 상태에서 DB·Redis는 `healthy`, Web은 실행 중이었으며 Sidekiq·Streaming은 기동하지 않았습니다. 최종 출력은 **`CHECKPOINT 24-16L-4 WEB STARTUP PASSED`**입니다.
+
+**출력 유의사항:** 터미널 붙여넣기 과정에서 Bash `command substitution` 구문 관련 `unexpected EOF while looking for matching ')'` 경고가 두 차례 나타났습니다. 주요 서비스 및 내부 HTTP 점검은 완료됐으나 일부 입력이 변형됐을 수 있으므로 **별도 읽기 전용 런타임 상태 재검사**를 진행한 후 앱 API와 미디어 검증으로 넘어갑니다. **Web 로그인·게시물·미디어 응답은 아직 별도 검증하지 않았습니다.**
+
+## 39. 아직 '통과'라고 선언하면 안 되는 항목
 
 - 특정 Sidekiq 개별 작업 성공 여부의 독립적 검증
 - **독립 VM 복원 및 앱 계정 로그인 검증**
