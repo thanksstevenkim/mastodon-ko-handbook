@@ -1,6 +1,6 @@
 # 05B. 신규 설치의 비밀키·PostgreSQL 인증 안전화 실험
 
-> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·독립 Mac HTTPS·Safari 로그인·게시물/미디어 저장 검증 통과 (Checkpoint 24-2~24-12, 2026-10-26).** 새 `mastodon-install-lab`에서 SCRAM TCP 인증, 계정·키, 초기 스키마, 핵심 서비스, Caddy HTTPS 및 Mac 접근을 검증했습니다. **Safari 관리자 로그인 성공은 사용자의 보고로 확인**했고, DB에 게시물 2개·연결된 미디어 1개, 로컬 미디어 파일 존재를 확인했습니다. **Sidekiq 처리 카운터는 관찰했으나 개별 작업 성공, 관리자 대시보드 접근, 재부팅·독립 복원은 아직 미검증**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
+> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·독립 Mac HTTPS·Safari 로그인·게시물/미디어 저장 및 재부팅 전 영속성 기준점 검증 통과 (Checkpoint 24-2~24-13A, 2026-10-26).** 새 `mastodon-install-lab`에서 SCRAM TCP 인증, 계정·키, 초기 스키마, 핵심 서비스, Caddy HTTPS 및 Mac 접근을 검증했습니다. **Safari 관리자 로그인 성공은 사용자의 보고로 확인**했고, DB에 게시물 2개·연결된 미디어 1개, 로컬 미디어 파일 존재를 확인했습니다. **Sidekiq 처리 카운터는 관찰했으나 개별 작업 성공, 관리자 대시보드 접근, 실제 재부팅·독립 복원은 아직 미검증**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
 
 [← 05A. UTM 설치 실측](05a-utm-verified-installation.md) · [05. 최초 설치](05-initial-setup.md) · [핸드북 목차](../../README.md)
 
@@ -188,7 +188,22 @@ Mac 로그인 키체인에 **실험용 로컬 공개 CA 인증서**를 사용자
 
 **검증의 한계:** 이번 검사로 DB 레코드·미디어 파일 보존과 Sidekiq 누적 처리 지표는 확인되지만, 특정 이미지 변환 작업의 성공이나 브라우저에서의 실제 표시까지 자동으로 검증한 것은 아닙니다. 사용자가 본 Safari 이미지 표시, 관리자 대시보드 화면 성공에 대한 독립 출력도 제공되지 않았습니다. 실험 VM에서 실수로 실행된 `mustard-r2-batch-runner.sh`의 권한 변경·문법 검사·SHA-256 출력은 파일 부재로 모두 실패했으며, 이 R2 유지보수 스크립트는 별도 서버 작업에 속하므로 이 VM의 Mastodon 검사와 무관합니다.
 
-## 14. 아직 '통과'라고 선언하면 안 되는 항목
+## 14. Checkpoint 24-13A 재부팅 전 영속성 기준점
+
+전용 `mastodon-install-lab`의 읽기 전용 검사에서 **Docker와 Caddy 모두 `enabled` 및 `active`**, Docker Compose 프로젝트 `mastodon-install`의 DB·Redis·Web·Sidekiq·Streaming **다섯 컨테이너 모두 `healthy`이고 재시작 정책은 모두 `always`**였습니다. PostgreSQL `./postgres14`, Redis `./redis`, Web·Sidekiq 공유 미디어 `./public/system`의 실제 Docker 바인드 마운트를 비교하여 영속 경로가 정확히 연결됐음을 확인했습니다.
+
+재부팅 전 DB 기준점은 다음과 같습니다.
+
+| 지표 | 재부팅 전 실측 |
+| --- | ---: |
+| 로컬 `labadmin` 계정 | 1 |
+| 로컬 `labadmin`의 일반 게시물 | 2 |
+| 해당 계정의 게시물에 연결된 미디어 | 1 |
+| `schema_migrations` 항목 | 615 |
+
+`.env.production`과 `.env.postgres` 권한은 각각 `600`, 실제 `public/system` 미디어 파일이 존재했고 게스트 HTTPS `/health` 응답은 `OK`였습니다. **이것은 자동 재기동과 데이터 보존의 사전 조건을 확인한 결과이며, 실제 재부팅 후 복구 성공을 의미하지 않습니다.** 후속 Checkpoint 24-13B에서 비교해야 합니다.
+
+## 15. 아직 '통과'라고 선언하면 안 되는 항목
 
 - Safari 관리자 대시보드 및 JPEG 원본·썸네일 표시 확인, 특정 Sidekiq 작업의 성공 여부
 - 별도 실험 VM 재시작 후 영속성·백업 복원
