@@ -170,7 +170,15 @@ VM에서 Caddy의 **공개 로컬 CA 인증서만** 별도 파일로 추출해 M
 - 계정·역할·이메일·승인·확인·암호화된 비밀번호에 대한 DB 검증 결과 **1개 계정 일치**.
 - **아직 로그인 성공을 의미하지 않습니다.** Safari HTTPS 신뢰 설정과 실제 로그인·세션을 후속 검증해야 합니다. SMTP는 테스트하지 않았습니다.
 
-## 11. 아직 '통과'라고 선언하면 안 되는 항목
+## 11. Checkpoint 24-11B Mac 인증서 신뢰 진단 (진행 중)
+
+Mac 로그인 키체인에 **실험용 로컬 공개 CA 인증서**를 사용자 신뢰(`trustRoot`, SSL, 대상 호스트 한정)로 추가하고, `/etc/hosts`에 **`192.168.64.6 mastodon-install.test # MASTODON-INSTALL-LAB-20261026`**을 임시 추가했습니다. 사용자 보고 출력에서 `dscacheutil`은 실험 도메인을 기대 IP로 해석했으나, 첫 `/usr/bin/curl` HTTPS 검사에서는 **`curl: (60) unable to get local issuer certificate`**로 중단됐습니다.
+
+이후 **설정 변경 없이** 읽기 전용 진단을 진행했습니다. Mac 기본 curl은 SecureTransport 기반이며, 같은 호스트에 대해 명시적 `--cacert`를 사용한 HTTPS는 `OK`, `CURL_SSL_BACKEND=secure-transport /usr/bin/curl -q`로 실행한 **기본 신뢰 HTTPS 역시 `OK`**였습니다. `security user-trust-settings-enable` 출력은 사용자 신뢰 설정의 활성화를 나타냈습니다.
+
+**판정:** macOS SecureTransport를 이용하는 특정 curl 호출의 신뢰 검사가 성공했지만, 이전 실패와의 차이는 아직 미확인입니다. 성공한 호출에는 `-q`(개인 curl 설정 무시)와 TLS 백엔드 환경변수가 포함되어 있으므로, `-q` 여부를 분리해 진단할 예정입니다. 이 결과만으로 Safari 로그인까지 통과했다고 기록하지 않습니다. **기존에 설치한 CA·hosts를 중복 설치하지 않습니다.** 최종 실험 뒤에는 해당 임시 설정만 제거할 예정입니다.
+
+## 12. 아직 '통과'라고 선언하면 안 되는 항목
 
 - Mac 키체인 및 브라우저 이름 해석을 임시로 설정한 뒤 Safari에서 실제 관리자 로그인
 - 게시물·이미지 저장 및 Sidekiq 백그라운드 작업의 실제 기능
