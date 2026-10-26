@@ -1,6 +1,6 @@
 # 05B. 신규 설치의 비밀키·PostgreSQL 인증 안전화 실험
 
-> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스 기동 검증 통과 (Checkpoint 24-2~24-8, 2026-10-26).** 새 `mastodon-install-lab`에서 SCRAM TCP 인증·앱 계정 권한·필수 키 6개·Rails 초기 스키마 및 Web·Sidekiq·Streaming 헬스체크를 검증했습니다. **로컬 HTTPS·관리자 로그인·신규 실험 VM 재부팅·독립 복원은 아직 미검증**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
+> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·게스트 VM 내부 HTTPS 검증 통과 (Checkpoint 24-2~24-9, 2026-10-26).** 새 `mastodon-install-lab`에서 SCRAM TCP 인증·앱 계정 권한·필수 키 6개·Rails 초기 스키마, Web·Sidekiq·Streaming 헬스체크 및 Caddy HTTPS를 검증했습니다. **Mac 클라이언트 HTTPS, 관리자 로그인, 신규 실험 VM 재부팅·독립 복원은 아직 미검증**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
 
 [← 05A. UTM 설치 실측](05a-utm-verified-installation.md) · [05. 최초 설치](05-initial-setup.md) · [핸드북 목차](../../README.md)
 
@@ -137,9 +137,24 @@ Mastodon 앱 키는 **v4.7.3 이미지 내부의 공식 생성 작업**을 사�
 
 이는 **앱 서버가 실행되고 최소 헬스체크가 성공했다는 증거**입니다. 브라우저 로그인, 실제 미디어 쓰기 및 외부 연합 송수신 성공을 의미하지 않습니다.
 
-## 8. 아직 '통과'라고 선언하면 안 되는 항목
+## 8. Checkpoint 24-9 Caddy 로컬 HTTPS 검증
 
-- 로컬 Caddy HTTPS 연결·인증서 신뢰와 관리자 로그인
+새 VM의 IPv4 `192.168.64.6`, 핵심 서비스 5개의 `healthy`, VM의 HTTP/HTTPS 포트 미사용 상태와 Caddy 미설치를 확인한 후 공식 패키지 저장소에서 **Caddy v2.11.7 (ARM64)**을 설치했습니다. 원본 설정을 `/etc/caddy/Caddyfile.before-install-lab`에 보존하고 테스트 도메인 `mastodon-install.test`에 대해 `tls internal`과 VM IP 전용 `bind 192.168.64.6`를 설정했습니다. Streaming 경로는 `127.0.0.1:4000`, 나머지 경로는 `127.0.0.1:3000`으로 프록시합니다.
+
+| 점검 | 게스트 VM에서 관찰한 결과 |
+| --- | --- |
+| Caddy 설정 `caddy validate` | `Valid configuration` |
+| systemd 서비스 `caddy` | `active` |
+| 로컬 공개 루트 CA | 인증서 파일 존재 |
+| `https://mastodon-install.test/health` | `OK` |
+| `https://mastodon-install.test/api/v1/streaming/health` | `OK` |
+| HTTPS `/` | HTTP `200` |
+
+`curl --cacert`와 `--resolve`를 사용하여 **인증서를 무시하지 않고** HTTPS 연결을 검사했습니다. Caddyfile 서식 경고는 출력됐으나 유효한 구성과 실제 HTTPS 응답을 확인했습니다. **Mac에서의 독립적 TLS 검사, Safari 접속, 관리자 계정·로그인, 메일과 외부 연합 통신은 이번 검증에 포함되지 않았습니다.** 개인 인증기관의 **개인키는 복사하거나 공개하지 않습니다.**
+
+## 9. 아직 '통과'라고 선언하면 안 되는 항목
+
+- Mac에서의 독립적 HTTPS 인증서·연결 검증과 관리자 계정·Safari 로그인
 - 게시물·이미지 저장 및 Sidekiq 백그라운드 작업의 실제 기능
 - 별도 실험 VM 재시작 후 영속성·백업 복원
 - 새 설치 절차를 외부 독자가 다른 환경에서 재현할 수 있는지
