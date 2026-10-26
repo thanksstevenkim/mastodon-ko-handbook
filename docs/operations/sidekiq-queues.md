@@ -34,6 +34,10 @@ docker compose logs --since=15m sidekiq
 
 계속 증가하고 핵심 기능에 영향이 있다면 별도 장애 대응으로 확대하되, 사용자 데이터나 전달할 활동을 삭제할 수 있는 명령은 승인과 복구 계획 없이 실행하지 않습니다.
 
+## 정기 모니터링으로 이어가기
+
+일반 큐가 비어 있어도 Retry·Dead에는 과거 실패가 남아 있을 수 있습니다. 매일 읽기 전용 통계를 기록하고 systemd Timer의 첫 예약 실행까지 검증하는 방법은 [Sidekiq 정기 모니터링과 실패 작업 관리](sidekiq-monitoring.md)를 참고하세요. 작업 수 감소를 전송 성공으로 단정하거나 일괄 삭제하지 마세요.
+
 ## 함께 볼 것: Web 성능 저하
 
 [별도의 웹 지연 사례](https://github.com/thanksstevenkim/mastodon-lab/blob/main/incidents/013-intermittent-web-latency-and-webfinger-request-concentration.md)에서는 Puma 요청과 WebFinger가 늦어졌지만, 조사 당시 Sidekiq 핵심 대기열은 비어 있었습니다. DB 활동·Puma CPU·Nginx 요청 시간·직접 앱 응답을 분리해 점검했고, 특정 요청 패턴과의 인과관계는 **확정하지 않았습니다**. 서로 다른 장애를 하나로 묶어 추측하지 않는 것이 중요합니다.
