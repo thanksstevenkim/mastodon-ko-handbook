@@ -1,6 +1,6 @@
 # 05B. 신규 설치의 비밀키·PostgreSQL 인증 안전화 실험
 
-> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·서버/독립 Mac HTTPS·최초 Owner 생성 검증 통과 (Checkpoint 24-2~24-11A, 2026-10-26).** 새 `mastodon-install-lab`에서 SCRAM TCP 인증·앱 계정 권한·필수 키 6개·Rails 초기 스키마, 핵심 서비스 헬스체크 및 Caddy HTTPS를 검증했습니다. Mac에서 별도 공개 루트 CA로 Web·Streaming·홈페이지 HTTPS 연결도 확인했습니다. **Safari 브라우저 신뢰·실제 로그인·신규 실험 VM 재부팅·독립 복원은 아직 미검증**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
+> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·서버/독립 Mac HTTPS·최초 Owner 생성 및 Safari 로그인 검증 통과 (Checkpoint 24-2~24-11B, 2026-10-26).** 새 `mastodon-install-lab`에서 SCRAM TCP 인증·앱 계정 권한·필수 키 6개·Rails 초기 스키마, 핵심 서비스 헬스체크, Caddy HTTPS와 독립 Mac 연결을 검증했습니다. **Safari 관리자의 실제 로그인 성공은 실험자의 보고로 확인**했으며 관리자 화면 접근·게시물·미디어·Sidekiq 기능, VM 재부팅·독립 복원은 아직 미검증입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
 
 [← 05A. UTM 설치 실측](05a-utm-verified-installation.md) · [05. 최초 설치](05-initial-setup.md) · [핸드북 목차](../../README.md)
 
@@ -174,13 +174,17 @@ VM에서 Caddy의 **공개 로컬 CA 인증서만** 별도 파일로 추출해 M
 
 Mac 로그인 키체인에 **실험용 로컬 공개 CA 인증서**를 사용자 신뢰(`trustRoot`, SSL, 대상 호스트 한정)로 추가하고, `/etc/hosts`에 **`192.168.64.6 mastodon-install.test # MASTODON-INSTALL-LAB-20261026`**을 임시 추가했습니다. 사용자 보고 출력에서 `dscacheutil`은 실험 도메인을 기대 IP로 해석했으나, 첫 `/usr/bin/curl` HTTPS 검사에서는 **`curl: (60) unable to get local issuer certificate`**로 중단됐습니다.
 
-이후 **설정 변경 없이** 읽기 전용 진단을 진행했습니다. Mac 기본 curl은 SecureTransport 기반이며, 같은 호스트에 대해 명시적 `--cacert`를 사용한 HTTPS는 `OK`, `CURL_SSL_BACKEND=secure-transport /usr/bin/curl -q`로 실행한 **기본 신뢰 HTTPS 역시 `OK`**였습니다. `security user-trust-settings-enable` 출력은 사용자 신뢰 설정의 활성화를 나타냈습니다.
+이후 **설정 변경 없이** 읽기 전용 진단을 진행했습니다. Mac의 `/usr/bin/curl`은 기본 LibreSSL 외에 SecureTransport를 선택할 수 있는 구성이었고, 같은 호스트에 대해 명시적 `--cacert`를 사용한 HTTPS는 `OK`, `CURL_SSL_BACKEND=secure-transport /usr/bin/curl -q`로 실행한 **macOS 키체인 신뢰 HTTPS도 `OK`**였습니다. `security user-trust-settings-enable` 출력은 사용자 신뢰 설정의 활성화를 나타냈습니다.
 
 **후속 판정(2026-10-26):** 동일한 Mac에서 `CURL_SSL_BACKEND`를 지정하지 않은 두 호출(`curl -q`, 기본 `curl`)은 모두 `curl: (60) unable to get local issuer certificate`로 실패했습니다. 따라서 `.curlrc` 사용 여부는 원인이 아니었습니다. macOS `/usr/bin/curl -V`가 보여준 `libcurl/8.7.1 (SecureTransport) LibreSSL/3.3.6`에서 **괄호 밖 LibreSSL은 기본 TLS 백엔드이고 SecureTransport는 선택 가능한 다른 백엔드**입니다. 공식 curl 설명에 따르면 `CURL_SSL_BACKEND=secure-transport`로 백엔드를 지정할 수 있으며, SecureTransport는 macOS의 인증서 신뢰 설정을 사용합니다. 따라서 이전 테스트에서 `SecureTransport` 강제 선택 시 `OK`, 기본 LibreSSL에서 오류 60이 나온 현상과 부합합니다. 출처: [curl TLS 백엔드 문서](https://everything.curl.dev/usingcurl/tls/backends.html), [curl 개발자 설명](https://curl.se/mail/lib-2025-01/0048.html). **이는 Safari 브라우저 로그인이 성공했다는 판정이 아닙니다.** 서버나 CA를 재발급할 이유는 없으며 기존에 추가한 인증서·hosts를 중복 설치하지 않습니다. 최종 실험 뒤에는 해당 임시 설정만 제거할 예정입니다.
 
-## 12. 아직 '통과'라고 선언하면 안 되는 항목
+## 12. Checkpoint 24-11B Safari 로그인 확인
 
-- Mac 키체인 및 브라우저 이름 해석을 임시로 설정한 뒤 Safari에서 실제 관리자 로그인
+실험자는 Mac의 `mastodon-install.test` 접근 설정 이후 비밀번호 파일에서 암호를 출력 없이 클립보드로 복사했으며, 기존 Mac zsh에서 `case`의 `!` 히스토리 확장 오류를 피하도록 검사식을 수정했습니다. 이어서 **Safari 로그인 성공을 보고**했습니다. 브라우저 화면·세션 내부 관리자 권한은 별도 진단 로그로 검증하지 않았으므로, 본 항목은 **사용자 보고에 따른 실사용 로그인 성공**으로 명시합니다. 임시 Caddy 로컬 CA의 Mac 로그인 키체인 신뢰와 `/etc/hosts` 실험 도메인 설정은 아직 유지 중이며, 후속 브라우저 실험 완료 후 해당 항목만 원상복구할 예정입니다.
+
+## 13. 아직 '통과'라고 선언하면 안 되는 항목
+
+- 관리자 대시보드 접근 및 실제 게시물·이미지·Sidekiq 기능 검증
 - 게시물·이미지 저장 및 Sidekiq 백그라운드 작업의 실제 기능
 - 별도 실험 VM 재시작 후 영속성·백업 복원
 - 새 설치 절차를 외부 독자가 다른 환경에서 재현할 수 있는지
