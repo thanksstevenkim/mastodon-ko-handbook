@@ -1,6 +1,6 @@
 # 05B. 신규 설치의 비밀키·PostgreSQL 인증 안전화 실험
 
-> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·독립 Mac HTTPS·Safari 로그인·게시물/미디어 저장·재부팅 후 자동 복구 및 Safari 재검증·Mac 임시 설정 정리·암호화 백업 생성·Mac 사본 무결성·독립 복원 VM 수신·Docker 설치·격리 네트워크·Compose 정적 정책·ARM64 이미지 준비 검증 통과 (Checkpoint 24-2~24-16J-2, 2026-10-26).** 새 `mastodon-install-lab`에서 PostgreSQL SCRAM 인증과 Mastodon 주요 기능·재부팅 보존을 검증했으며, Mac의 임시 설정 제거와 암호화 백업 복호화 및 전송 해시 일치를 확인했습니다. 별도 `mastodon-restore-lab`(192.168.64.7)에서 Docker, 게이트웨이 없는 내부 네트워크, Compose 정책, 필요한 네 종류 ARM64 이미지 확보까지 검증했습니다. **독립 VM의 암호화 백업 추출·덤프 판독·신규 PostgreSQL 14 클러스터의 SCRAM 호스트 인증 및 격리 기동은 성공했으며, 앱 DB/역할 생성·앱 TCP 비밀번호 검사까지 성공했고, 실제 데이터 복원·원본 계정 복구 시험은 아직 미완료**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
+> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할·필수 키·DB 스키마·핵심 서비스·독립 Mac HTTPS·Safari 로그인·게시물/미디어 저장·재부팅 후 자동 복구 및 Safari 재검증·Mac 임시 설정 정리·암호화 백업 생성·Mac 사본 무결성·독립 복원 VM 수신·Docker 설치·격리 네트워크·Compose 정적 정책·ARM64 이미지 준비 검증 통과 (Checkpoint 24-2~24-16J-3, 2026-10-26).** 새 `mastodon-install-lab`에서 PostgreSQL SCRAM 인증과 Mastodon 주요 기능·재부팅 보존을 검증했으며, Mac의 임시 설정 제거와 암호화 백업 복호화 및 전송 해시 일치를 확인했습니다. 별도 `mastodon-restore-lab`(192.168.64.7)에서 Docker, 게이트웨이 없는 내부 네트워크, Compose 정책, 필요한 네 종류 ARM64 이미지 확보까지 검증했습니다. **독립 VM의 암호화 백업 추출·덤프 판독·신규 PostgreSQL 14 클러스터의 SCRAM 호스트 인증 및 격리 기동은 성공했으며, 앱 DB/역할 생성·앱 TCP 비밀번호 검사까지 성공했고, 실제 데이터베이스 복원은 성공했으며, 미디어 실파일·Web 로그인·Sidekiq 검증은 아직 미완료**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
 
 [← 05A. UTM 설치 실측](05a-utm-verified-installation.md) · [05. 최초 설치](05-initial-setup.md) · [핸드북 목차](../../README.md)
 
@@ -337,7 +337,15 @@ macOS의 원본 암호화 백업 **`mastodon-install-20261026T022203Z.tar.gpg`**
 
 **판정:** 앱 역할과 데이터베이스 생성 및 SCRAM TCP 비밀번호 검증까지 통과했습니다. 실제 백업 덤프를 이용한 데이터·스키마 복원은 **아직 시작하지 않았습니다**. 상태 변경 작업이므로 24-16J-2 명령은 재실행하지 않고 다음 단계에서 트랜잭션 기반 `pg_restore` 및 원본 기준점 대조를 수행합니다.
 
-## 32. 아직 '통과'라고 선언하면 안 되는 항목
+## 32. Checkpoint 24-16J-3 PostgreSQL 데이터 실제 복원
+
+격리된 복원 VM `mastodon-restore-lab`에서 보안 권한이 제한된 커스텀 덤프 `database.dump`와 `mastodon-restore-db-1`의 정상 상태, 전용 네트워크 연결, 호스트 포트 0개 및 앱 DB의 빈 테이블 상태를 다시 확인했습니다. 실제 `pg_restore`를 **`--single-transaction --exit-on-error --no-owner --no-acl --role=mastodon`**으로 실행했으며, **`Restore transaction: COMMITTED`**가 확인됐습니다.
+
+복원 후 `Tables|Migrations|Admin|Posts|Media` 검사 결과는 **`118|615|1|2|1`**로 원본 기준점과 일치합니다. `public` 테이블 중 `mastodon` 이외 소유자의 수는 **0개**, PostgreSQL 상태는 **HEALTHY**였습니다. 별도 Web·Sidekiq·Streaming 서비스는 시작하지 않았습니다. 마지막 출력은 **`CHECKPOINT 24-16J-3 DATABASE RESTORE PASSED`**였습니다.
+
+**판정과 다음 검증:** 독립 클러스터에 데이터베이스의 스키마·마이그레이션·관리자·게시물·미디어 메타데이터를 실제 복원했으며 소유권을 검증했습니다. **미디어 실제 파일을 서비스 볼륨에 배치하지 않았고, 복원 후 로그인이나 이미지 표시도 시험하지 않았습니다.** 복원 로그는 성공 직후 제거됐고 원본 암호화 아카이브는 보존됩니다.
+
+## 33. 아직 '통과'라고 선언하면 안 되는 항목
 
 - 특정 Sidekiq 개별 작업 성공 여부의 독립적 검증
 - **독립 VM 복원 및 앱 계정 로그인 검증**
