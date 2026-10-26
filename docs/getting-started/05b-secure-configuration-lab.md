@@ -1,6 +1,6 @@
 # 05B. 신규 설치의 비밀키·PostgreSQL 인증 안전화 실험
 
-> **검증 상태: 설계 및 공식 소스 대조 완료 / 독립 신규 VM 실행 미검증 (Checkpoint 24-2, 2026-10-26).** 이 문서의 명령은 Mastodon v4.7.3과 PostgreSQL 14 공식 이미지의 설정을 대조해 마련한 **다음 실험안**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버에서는 실행하지 않습니다. 별도의 **완전히 빈 Ubuntu VM**에서 결과를 확인한 뒤에만 '테스트 검증'으로 변경합니다.
+> **검증 상태: 신규 VM의 설치 기반·PostgreSQL SCRAM 인증·앱 역할 검증 통과 (Checkpoint 24-2~24-5B, 2026-10-26).** Mastodon v4.7.3과 PostgreSQL 14의 공식 구성을 대조하고 새 `mastodon-install-lab`에서 실제 TCP 인증 및 앱 계정 권한을 검증했습니다. **Rails 암호화 키와 VAPID 키의 생성·저장, Web·Sidekiq·Streaming 실행은 아직 미검증**입니다. 기존 `mastodon-lab`·`mastodon-dr-lab`·실제 운영 서버는 변경하지 않았습니다.
 
 [← 05A. UTM 설치 실측](05a-utm-verified-installation.md) · [05. 최초 설치](05-initial-setup.md) · [핸드북 목차](../../README.md)
 
@@ -94,16 +94,14 @@ services:
 
 PostgreSQL 이미지는 기본 `postgres` 슈퍼유저로 빈 DB를 초기화합니다. 이후에 앱 전용 `mastodon` 로그인 역할과 `mastodon_production` 데이터베이스를 생성해야 합니다. **앱을 DB 슈퍼유저로 실행하지 않습니다.**
 
-실험자는 새 DB의 관리용 `psql` 세션 안에서 다음 순서로 작업합니다(`\password`는 psql의 대화형 메타명령입니다).
+**Checkpoint 24-5B 실측:** 새 DB에 역할·데이터베이스가 모두 없다는 사실(`0|0`)을 사전 확인했습니다. 호스트의 권한 `600`인 `.env.production`에서 앱 비밀번호를 읽어, 콘솔이나 명령행 인수로 출력하지 않고 `docker exec -i`의 **표준 입력**으로 `psql`에 전달하는 일회성 SQL을 실행했습니다. `CREATE ROLE`·`CREATE DATABASE`에 성공했고 DB 소유자는 `mastodon`이었습니다. 실험의 역할 검사는 아래 순서로 `1|0|0|0|0|0`을 반환했습니다.
 
 ```text
-CREATE ROLE mastodon LOGIN;
-\password mastodon
-CREATE DATABASE mastodon_production OWNER mastodon;
-\q
+LOGIN | SUPERUSER | CREATEDB | CREATEROLE | REPLICATION | BYPASSRLS
+1     | 0         | 0        | 0          | 0           | 0
 ```
 
-설정한 앱 전용 비밀번호와 `.env.production`의 `DB_PASS`가 일치해야 합니다. 일반적인 `CREATE ROLE ... PASSWORD '...'`를 터미널 기록이나 공개 로그에 직접 쓰는 방법은 피합니다. 실제 새 VM에서 `psql` 대화형 비밀번호 입력과 SCRAM 호스트 연결을 시험한 뒤, 호스트에서 실행할 안전한 검사 명령까지 확정할 예정입니다.
+또한 TCP에서 올바른 `.env.production`의 `DB_PASS`로 `mastodon_production|mastodon` 연결 성공, 잘못된 앱 비밀번호로 연결 거부를 확인했습니다. `CREATE ROLE ... PASSWORD '...'`의 **SQL 본문 자체는 컨테이너 내부 입력과 PostgreSQL 처리 과정에서 비밀값을 포함**하므로, 서버 프로세스/DB 관리자의 접근권한과 SQL 로깅·감사 설정을 별도로 고려해야 합니다. 비밀값은 공개 문서·출력에 남기지 않았습니다.
 
 Mastodon 앱 키는 **v4.7.3 이미지 내부의 공식 생성 작업**을 사용합니다.
 
@@ -115,11 +113,16 @@ Mastodon 앱 키는 **v4.7.3 이미지 내부의 공식 생성 작업**을 사�
 
 출력에서 호스트 파일로 값을 옮길 때 **일회성 컨테이너 내부 파일이 그대로 저장된다고 가정하지 않습니다.** 생성 출력의 취급, 원자적 호스트 파일 기록, 재실행 방지, 정상/오류 경로는 실제 새 VM에서 검증할 예정이므로 아직 범용 복사 실행 명령으로 제시하지 않습니다.
 
-## 5. 아직 '통과'라고 선언하면 안 되는 항목
+## 5. Checkpoint 24-3~24-5A 검증 결과
 
-- SCRAM 인증으로 PostgreSQL 초기화 후 **잘못된 비밀번호가 거부되고 올바른 비밀번호가 허용되는지**
-- 앱 역할이 DB 슈퍼유저가 아닌지 및 앱의 정상 접속이 가능한지
-- 환경 파일이 권한 600으로 보관되고 앱 생성 키가 호스트에 정확히 저장되는지
+- **24-3 Docker:** Docker Engine 29.9.2, Compose v5.6.1, `aarch64` 엔진과 ARM64 `hello-world` 실행 성공.
+- **24-4 Compose/비밀 파일:** Mastodon v4.7.3 공식 소스 커밋 `8ff11c2bb7b9f0714e947b10fa3629c6542c7121`, `.env.production`·`.env.postgres`·오버라이드 권한 600, 서로 다른 64자리 16진수 DB 비밀번호, 유효한 Compose 구성, DB/Redis의 호스트 포트 미게시 확인. **Rails/VAPID 키는 미생성** 상태.
+- **24-5A PostgreSQL:** 새 `postgres:14-alpine` 컨테이너 Healthy, `pg_hba_file_rules`에서 호스트 유형 규칙 5개가 모두 `scram-sha-256`, 규칙 오류 0건. 올바른 PostgreSQL 관리자 비밀번호 허용, 잘못된 비밀번호 및 무비밀번호 **TCP** 연결 거부를 실제 시험했습니다.
+- **중요한 인증 경계:** 로컬 Unix 소켓을 위한 `local` 규칙 2개에는 `trust`가 남아 있습니다. 따라서 모든 연결 경로가 SCRAM으로 보호된다는 의미는 아닙니다. PostgreSQL 내부 소켓 접근자와 컨테이너 관리권한을 별도로 통제해야 합니다.
+
+## 6. 아직 '통과'라고 선언하면 안 되는 항목
+
+- Mastodon 공식 Rails 암호화 키 3개·앱 키·VAPID 키가 호스트 파일에 비공개로 정확히 기록되고 재실행으로 덮어써지지 않는지
 - 신규 DB 마이그레이션, Web·Sidekiq·Streaming의 서비스 헬스와 로그인
 - 별도 실험 VM 재시작 후 영속성·백업 복원
 
