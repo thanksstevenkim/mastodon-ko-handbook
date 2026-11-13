@@ -16,6 +16,29 @@ docker compose ps
 
 [사례: SUP-0001](https://github.com/thanksstevenkim/mastodon-lab/blob/main/incidents/001-cloudflare-521-after-upgrade.md)
 
+## 자동 업데이트 직후 Cloudflare 521이 발생했다면?
+
+Ubuntu에서는 보안 업데이트 이후 `needrestart`가 Nginx 등 여러 서비스를 재시작할 수 있습니다. 이때 Nginx 설정에 **기동 시점에 DNS로 해석해야 하는 외부 upstream**이 있으면, 일시적인 이름 해석 실패가 Nginx **전체 기동 실패**로 이어질 수 있습니다. 이는 앞의 `SUP-0001`(설정 중복)과 별개의 장애 유형입니다.
+
+우선 서비스 상태와 이벤트 순서를 확인합니다. 명령은 읽기 전용이며, 시간 범위는 실제 장애 시각에 맞추세요.
+
+```bash
+sudo systemctl status nginx --no-pager
+sudo journalctl -u nginx --since "2 hours ago" --no-pager -o short-iso
+sudo nginx -t
+sudo grep -nE -A 8 -B 2 'Restarting services|nginx.service' \
+  /var/log/unattended-upgrades/unattended-upgrades-dpkg.log | tail -n 80
+```
+
+- **업데이트가 Nginx를 재시작했는지**와 **왜 시작에 실패했는지**는 별개의 질문입니다. `Restarting services...`와 `host not found in upstream` 같은 로그를 각각 확인하세요. `systemd-resolved`가 같은 재시작 목록에 있었다고 해서 DNS 장애의 원인까지 확정되는 것은 아닙니다.
+- 정적 외부 호스트 때문에 기동이 막힌다면, 해당 프록시의 **런타임 DNS 해석**(`resolver`와 변수를 쓰는 `proxy_pass`)을 검토할 수 있습니다. HTTPS upstream에는 **SNI**(`proxy_ssl_server_name on`)와 올바른 `Host` 헤더, 기존 URI 재작성 규칙이 함께 중요합니다. 변경 전 설정 백업, `nginx -t`, 오류 없는 reload를 기본으로 합니다. 설정 검사 성공만으로 미디어 조회 성공이 보장되지는 않습니다.
+- **Cloudflare R2의 S3 API 엔드포인트**(`*.r2.cloudflarestorage.com`)와 **공개 버킷 커스텀 도메인**은 접근 방식이 다릅니다. S3 API를 인증 없는 공개 이미지 프록시처럼 취급하지 마세요. 로컬 Nginx 프록시에서 400이 나오더라도 공개 커스텀 도메인에서 200이 나올 수 있습니다. Cloudflare `CF-Cache-Status: HIT`만으로 원본 정상 여부를 판단하지 말고, `MISS` 결과와 요청 경로를 함께 기록하세요.
+- 원인을 확인하기 전에는 자동 보안 업데이트를 끄거나, 운영 중인 R2 객체 키·경로·인증 구조를 임의로 바꾸지 않습니다.
+
+관련 문서: [Nginx 프록시 동작 및 SNI](https://nginx.org/en/docs/http/ngx_http_proxy_module.html) · [Cloudflare R2 S3 API](https://developers.cloudflare.com/r2/get-started/s3/) · [R2 공개 버킷](https://developers.cloudflare.com/r2/buckets/public-buckets/)
+
+[실제 운영 사례: SUP-0014](https://github.com/thanksstevenkim/mastodon-lab/blob/main/incidents/014-nginx-restart-dns-failure-after-glibc-update-2026-11-13.md)
+
 ## Sidekiq가 Elasticsearch에 연결되지 않나?
 
 컨테이너 내부에서는 호스트명으로 참조하는 값과 **Compose 서비스명 및 네트워크**가 일치해야 합니다. 한 업그레이드 사례에서는 검색 서비스 이름이 바뀌었는데 `ES_HOST`가 이전 값을 가리켜 이름 해석에 실패했습니다.
