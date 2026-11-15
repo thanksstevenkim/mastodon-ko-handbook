@@ -17,6 +17,9 @@
 - [백업·복원 체크리스트](docs/operations/backup-readiness.md) — 무엇을 보관하고 어디까지 복구를 확인할지
 - [Mastodon 업그레이드](docs/operations/upgrade-checklist.md) — 변경 전 백업, DB 마이그레이션, 롤백
 - [런타임·보안 패치](docs/operations/security-patch-rollout.md) — 변경 범위를 좁힌 순차 배포
+- [Ubuntu 호스트 유지보수](docs/operations/host-maintenance.md) — 패키지 업데이트, 재부팅 전후 최소 점검
+- [웹사이트 가용성 감시](docs/operations/uptime-monitoring.md) — HTTP 검사, 실패·누락 알림과 한계
+- [원격 미디어 캐시 관리](docs/operations/media-cache-maintenance.md) — Dry Run, 보호 정책, 객체 저장소 주의사항
 - [Sidekiq 대기열 문제](docs/operations/sidekiq-queues.md) / [정기 모니터링](docs/operations/sidekiq-monitoring.md) — 지표와 장애 구분
 - [가입 남용·연합 보호](docs/security/registration-and-federation.md) — 운영 정책과 접속 제한
 - [자주 혼동하는 장애](docs/troubleshooting/known-failures.md) — 증상별 확인 지점
