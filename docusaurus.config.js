@@ -23,9 +23,12 @@ const config = {
   ],
   themeConfig: {
     navbar: {
-      title: '마스토돈 한국어 운영 핸드북',
+      title: '마스토돈 핸드북',
       items: [
-        {type: 'docSidebar', sidebarId: 'handbookSidebar', position: 'left', label: '안내서'},
+        {to: '/menu/install', label: '처음 설치', position: 'left'},
+        {to: '/menu/operate', label: '서버 운영', position: 'left'},
+        {to: '/menu/problems', label: '문제 해결', position: 'left'},
+        {to: '/menu/more', label: '보안·심화', position: 'left'},
         {href: 'https://github.com/thanksstevenkim/mastodon-ko-handbook', label: 'GitHub', position: 'right'},
       ],
     },

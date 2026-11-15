@@ -10,7 +10,7 @@ const audiencePaths = [
     summary: '운영할 준비가 되었는지 생각하고, 구성 요소부터 첫날 점검까지 순서대로 살펴보세요.',
     steps: '운영 전 고려사항 → 서버 준비 → 설치 → 첫날 점검',
     action: '설치 안내 시작하기',
-    path: '/guide/getting-started/introduction',
+    path: '/menu/install',
   },
   {
     eyebrow: '이미 운영 중인 분',
@@ -18,7 +18,7 @@ const audiencePaths = [
     summary: '백업, 업데이트, 모니터링 등 일상적인 관리와 장애 대응에 필요한 문서를 찾아보세요.',
     steps: '백업·복원 → 업데이트 → 모니터링 → 문제 해결',
     action: '운영 안내 살펴보기',
-    path: '/guide/operations/backup-readiness',
+    path: '/menu/operate',
   },
 ];
 
