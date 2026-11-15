@@ -62,10 +62,24 @@
   display: none !important;
 }
 
-/* Keep paragraphs readable now that the left sidebar no longer takes up width. */
+/* With the sidebar visually removed, Docusaurus still reserves its width in
+   the main docs column. Reclaim it and center the article + table of contents. */
 @media (min-width: 997px) {
-  .theme-doc-markdown {
-    max-width: 880px;
+  .docs-doc-page [class*='docMainContainer'] {
+    width: 100%;
+    max-width: 100% !important;
+  }
+
+  .docs-doc-page [class*='docMainContainer'] > .container {
+    width: 100%;
+    max-width: 1440px;
+    margin-inline: auto;
+  }
+
+  /* Center the whole article (breadcrumbs, title, text and pagination)
+     together rather than centering only the Markdown paragraphs. */
+  .docs-doc-page [class*='docItemContainer'] {
+    max-width: 900px;
     margin-inline: auto;
   }
 }
