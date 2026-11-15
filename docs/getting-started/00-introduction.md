@@ -2,7 +2,7 @@
 
 > **검증 상태:** 공식 문서 및 운영 사례 기반 입문 안내 · **작성 기준:** 2026-10-25, Mastodon 4.7.x 계열과 Ubuntu/Docker Compose를 예시로 사용합니다. 2026-10-25에 UTM 로컬 VM에서 4.7.3 최초 설치와 주요 기능을 검증했으며, [UTM 실측 설치 기록](../labs/utm-install-v4.7.3.md)에 기록했습니다. 공개 운영용 범용 설치 절차는 별도 검증이 필요합니다.
 
-[← 핸드북 목차](../../README.md) · [다음: Mastodon 구성 요소 →](01-architecture.md)
+[← 핸드북 목차](../handbook-index.md) · [다음: Mastodon 구성 요소 →](01-architecture.md)
 
 ## 이 문서에서 배울 것
 

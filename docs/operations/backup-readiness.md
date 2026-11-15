@@ -2,7 +2,7 @@
 
 > **범위:** Ubuntu + Docker Compose 기반 Mastodon의 일상적인 백업 준비와 복원 판단 기준입니다. 실험 중 실행한 세부 명령과 오류 수정 기록은 [Labs](../labs/README.md)에 따로 보관했습니다.
 
-[핸드북 목차](../../README.md) · [독립 VM 복원 실험 기록](../labs/utm-disaster-recovery-v4.7.3.md)
+[핸드북 목차](../handbook-index.md) · [독립 VM 복원 실험 기록](../labs/utm-disaster-recovery-v4.7.3.md)
 
 ## 무엇을 보존해야 하나?
 

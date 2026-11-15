@@ -4,4 +4,4 @@
 
 - [신규 설치 보안 설정의 핵심 절차](05b-secure-configuration.md)
 - [보안 설치 및 독립 복원 실험 기록 전체](../labs/secure-install-and-restore-20261026.md)
-- [핸드북 목차](../../README.md)
+- [핸드북 목차](../handbook-index.md)

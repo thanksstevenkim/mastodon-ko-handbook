@@ -18,4 +18,4 @@
 - 실험용 `.test` 도메인, UTM의 사설 IP, 별도 Docker 네트워크, 일회성 DB·CA 정책을 **인터넷 운영 서버에 그대로 적용하지 마세요**.
 - 필수 실행 절차는 [05. 최초 설치](../getting-started/05-initial-setup.md), 기본 보안 설정은 [05B](../getting-started/05b-secure-configuration.md), 백업 운영 판단은 [Operations](../operations/backup-readiness.md)를 보세요.
 
-[← 핸드북 목차](../../README.md)
+[← 핸드북 목차](../handbook-index.md)
