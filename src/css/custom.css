@@ -1,2 +1,57 @@
-:root { --ifm-color-primary: #2f725c; --ifm-color-primary-dark: #2a6753; --ifm-color-primary-darker: #28614e; --ifm-color-primary-darkest: #215040; --ifm-color-primary-light: #348064; --ifm-color-primary-lighter: #36866a; --ifm-color-primary-lightest: #3d9778; }
-[data-theme='dark'] { --ifm-color-primary: #7cc8a8; --ifm-color-primary-dark: #62be96; --ifm-color-primary-darker: #54b98d; --ifm-color-primary-darkest: #389d73; --ifm-color-primary-light: #96d2ba; --ifm-color-primary-lighter: #a4d7c3; --ifm-color-primary-lightest: #ccebdd; }
+:root {
+  --ifm-color-primary: #2f725c;
+  --ifm-color-primary-dark: #2a6753;
+  --ifm-color-primary-darker: #28614e;
+  --ifm-color-primary-darkest: #215040;
+  --ifm-color-primary-light: #348064;
+  --ifm-color-primary-lighter: #36866a;
+  --ifm-color-primary-lightest: #3d9778;
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #7cc8a8;
+  --ifm-color-primary-dark: #62be96;
+  --ifm-color-primary-darker: #54b98d;
+  --ifm-color-primary-darkest: #389d73;
+  --ifm-color-primary-light: #96d2ba;
+  --ifm-color-primary-lighter: #a4d7c3;
+  --ifm-color-primary-lightest: #ccebdd;
+}
+
+/* Keep long operational instructions comfortably readable. */
+.theme-doc-markdown {
+  line-height: 1.78;
+}
+
+.theme-doc-markdown p,
+.theme-doc-markdown li {
+  line-height: 1.78;
+}
+
+.theme-doc-markdown h2 {
+  margin-top: 2.35rem;
+}
+
+.theme-doc-markdown h3 {
+  margin-top: 1.85rem;
+}
+
+.theme-doc-markdown pre,
+.theme-doc-markdown table {
+  max-width: 100%;
+}
+
+/* Avoid horizontal overflow on narrow screens without shrinking code. */
+.theme-doc-markdown pre {
+  overflow-x: auto;
+}
+
+@media (max-width: 720px) {
+  .theme-doc-markdown {
+    line-height: 1.72;
+  }
+
+  .theme-doc-markdown h2 {
+    margin-top: 1.9rem;
+  }
+}
