@@ -6,7 +6,7 @@ const config = {
   baseUrl: '/mastodon-ko-handbook/',
   organizationName: 'thanksstevenkim',
   projectName: 'mastodon-ko-handbook',
-  onBrokenLinks: 'warn', // Preview only: inspect warnings before public deployment.
+  onBrokenLinks: 'throw', // Reject unresolved site links during the build.
   i18n: {defaultLocale: 'ko', locales: ['ko']},
   markdown: {format: 'detect'},
   presets: [
