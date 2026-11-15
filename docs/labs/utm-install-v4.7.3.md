@@ -4,7 +4,7 @@
 
 > **검증 상태: 테스트 검증 (2026-10-25, Checkpoint 1~20).** UTM의 새 Ubuntu Server 24.04.5 ARM64 VM에 Mastodon 4.7.3을 설치하고 HTTPS, 관리자 로그인, 게시물 2건, JPEG 첨부 1건, Sidekiq 작업, 컨테이너·VM 재시작 후 지속성, 암호화 백업을 검증했습니다. **아래는 당시의 실제 검증 명령과 판정을 순서대로 엮은 실습 기록이지, 모든 환경에서 무인 실행되는 설치 스크립트가 아닙니다.**
 
-[← 최초 설치와 설정](../getting-started/05-initial-setup.md) · [다음: 첫날 운영 점검 →](../getting-started/06-first-day-checklist.md) · [핸드북 목차](../../README.md)
+[← 최초 설치와 설정](../getting-started/05-initial-setup.md) · [다음: 첫날 운영 점검 →](../getting-started/06-first-day-checklist.md) · [핸드북 목차](../handbook-index.md)
 
 ## 적용 대상과 경계
 
