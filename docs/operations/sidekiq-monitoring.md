@@ -176,7 +176,7 @@ systemctl list-timers --all mastodon-sidekiq-audit.timer --no-pager
 
 ## 6. Healthchecks.io와 이메일·Matrix로 외부 알림 추가하기
 
-> **운영 확인 범위:** 한 Mastodon 운영 서버에서 Healthchecks.io **정상 Ping(수동 실행)**, 격리된 테스트 Check를 통한 **이메일 장애·복구 알림**, **Matrix 방 메시지와 iPhone Element X 장애·복구 푸시**를 확인했습니다. **운영용 감사에 일부러 실패를 유도하지 않았으며, 알림 설치 후 첫 정기 실행의 외부 Ping도 아직 검증 전**입니다. 일반화된 설명이며 원클릭 설치용 검증 스크립트가 아닙니다.
+> **운영 확인 범위:** 한 Mastodon 운영 서버에서 Healthchecks.io **정상 Ping(수동 실행)**, 격리된 테스트 Check를 통한 **이메일 장애·복구 알림**, **Matrix 방 메시지와 iPhone Element X 장애·복구 푸시**를 확인했습니다. **운영용 감사에 일부러 실패를 유도하지 않았습니다.** 이후 2026-11-03~15의 정기 감사 journal에서 매일 완료 및 `Healthchecks success event: DELIVERED`를 확인했지만, 이는 **서버 측 Ping 전송 성공**을 뜻하며 외부 Check 이력이나 실제 장애 시 Matrix 수신을 대체하지 않습니다. 일반화된 설명이며 원클릭 설치용 검증 스크립트가 아닙니다.
 
 ### 역할과 감지 범위를 나눕니다
 
@@ -194,7 +194,7 @@ systemctl list-timers --all mastodon-sidekiq-audit.timer --no-pager
 3. `ExecStopPost` 같은 서비스 종료 후 처리기를 사용하면 systemd 서비스 결과에 따라 성공 Ping과 `/fail` Ping을 나눌 수 있습니다. 처리기에서는 **`SERVICE_RESULT` 값을 확인**하고, 값이 없거나 알 수 없는 경우 성공으로 단정하지 않도록 만듭니다.
 4. 실제 사례에서는 `ExecStopPost=-+/usr/local/libexec/mustard-sidekiq-healthchecks-notify` 형태로 **root로 실행되는 별도 알림기**를 사용했습니다. `+`의 권한 상승과 `-`의 실패 무시 동작은 반드시 이해하고 검토하세요. 알림 실패가 원래 감사 서비스의 실패 결과를 숨기면 안 됩니다.
 5. HTTPS-only 호출, 연결/전체 제한시간, 비밀 URL의 명령행 노출 방지, 로그에 비밀값을 쓰지 않는 설계가 중요합니다. 알림기가 실패하는 경우와 점검 자체가 실패하는 경우를 별도로 조사할 수 있도록 로그 메시지를 구분합니다.
-6. Matrix 연동용 방은 별도로 만들고 초대 및 봇 권한을 최소화합니다. Matrix 제공 방식과 종단 간 암호화(E2EE) 지원 여부를 사용하는 통합 서비스의 현재 설명에서 확인해야 합니다.
+6. Matrix 알림은 **이미 운영 중인 알림방을 재사용하거나** 필요에 따라 별도 방을 만들 수 있습니다. 봇의 권한을 최소화하고, Matrix 제공 방식과 종단 간 암호화(E2EE) 지원 여부를 사용하는 통합 서비스의 현재 설명에서 확인하세요.
 
 ### 운영 Check를 건드리지 않고 알림을 시험하기
 
@@ -221,5 +221,6 @@ systemctl list-timers --all mastodon-sidekiq-audit.timer --no-pager
 
 - [2026-10-26 Sidekiq 반복 전송 실패 조사와 일일 점검 자동화 (mastodon-lab)](https://github.com/thanksstevenkim/mastodon-lab/blob/main/operations/sidekiq-delivery-retries-and-daily-audit-2026-10-26.md) — 한 서버에서 수동 실행·첫 예약 실행 및 이후 외부 알림 연동을 확인한 기록
 - [Sidekiq 대기열 증가 진단](sidekiq-queues.md) — 계정 삭제 후 `pull` 큐가 일시적으로 증가한 **별개의** 사례
+- [웹사이트 가용성 감시](uptime-monitoring.md) — Sidekiq 감사 시간 사이에 발생하는 Nginx/HTTP 장애를 구분해 감지하는 방법
 
 이 가이드는 상태 조회와 기록을 위한 것이며, 사용자 데이터 및 연합 메시지를 제거하는 자동화 절차를 제공하지 않습니다.
