@@ -2,7 +2,7 @@
 
 > **보존 자료:** 기존 기본편 02~06에 들어 있던 실측 사례와 당시 성공·실패 판단을 원문 중심으로 모았습니다. 이 문서는 **초보자의 필수 설치 순서가 아니며**, 각 단락의 '미검증'은 해당 시점의 판단입니다. 이후의 종합 실험은 [UTM 설치 기록](utm-install-v4.7.3.md)과 [별도 안전 설치·복원 실험](secure-install-and-restore-20261026.md)에서 확인하세요.
 
-[실제 설치 가이드로 돌아가기](../getting-started/05-initial-setup.md) · [Labs 목차](README.md) · [핸드북 목차](../../README.md)
+[실제 설치 가이드로 돌아가기](../getting-started/05-initial-setup.md) · [Labs 목차](README.md) · [핸드북 목차](../handbook-index.md)
 
 ## 02. 서버 준비에 있던 실측 사례
 
