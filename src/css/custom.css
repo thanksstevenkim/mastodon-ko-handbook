@@ -55,3 +55,30 @@
     margin-top: 1.9rem;
   }
 }
+
+/* Keep the documented sidebar order for previous/next links, but replace its visible
+   navigation with the desktop top bar and mobile bottom tabs. */
+.theme-doc-sidebar-container {
+  display: none !important;
+}
+
+/* Keep paragraphs readable now that the left sidebar no longer takes up width. */
+@media (min-width: 997px) {
+  .theme-doc-markdown {
+    max-width: 880px;
+    margin-inline: auto;
+  }
+}
+
+@media (max-width: 996px) {
+  /* Docusaurus's mobile drawer would duplicate the bottom-tab navigation. */
+  .navbar__toggle,
+  .navbar-sidebar {
+    display: none !important;
+  }
+
+  /* Prevent the fixed bottom navigation from covering the last paragraph/footer. */
+  #__docusaurus {
+    padding-bottom: calc(82px + env(safe-area-inset-bottom));
+  }
+}
