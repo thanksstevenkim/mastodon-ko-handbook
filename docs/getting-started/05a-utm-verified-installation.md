@@ -4,4 +4,4 @@
 
 - [UTM에서 검증한 Mastodon 4.7.3 설치 기록](../labs/utm-install-v4.7.3.md)
 - [처음 설치하는 사람을 위한 05. 설치 절차](05-initial-setup.md)
-- [핸드북 목차](../../README.md)
+- [핸드북 목차](../handbook-index.md)
