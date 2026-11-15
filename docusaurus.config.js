@@ -33,7 +33,7 @@ const config = {
       style: 'light',
       links: [
         {title: '문서', items: [
-          {label: '처음 시작하기', to: '/guide/getting-started/00-introduction'},
+          {label: '처음 시작하기', to: '/guide/getting-started/introduction'},
           {label: '운영하기', to: '/guide/operations/backup-readiness'},
           {label: '장애 해결', to: '/guide/troubleshooting/known-failures'},
         ]},
