@@ -1,0 +1,12 @@
+.main { padding: 3rem 0 5rem; }
+.header { max-width: 820px; margin-bottom: 2.5rem; }
+.header h1 { font-size: clamp(2rem, 4vw, 3.1rem); line-height: 1.25; margin-bottom: 1.2rem; }
+.header > p:not(.eyebrow) { color: var(--ifm-color-emphasis-700); font-size: 1.1rem; margin-bottom: 1.6rem; }
+.eyebrow { color: var(--ifm-color-primary); font-weight: 700; letter-spacing: .025em; }
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.card { display: block; color: var(--ifm-font-color-base); border: 1px solid var(--ifm-color-emphasis-300); border-radius: .65rem; padding: 1.5rem; }
+.card:hover { text-decoration: none; color: var(--ifm-font-color-base); border-color: var(--ifm-color-primary); }
+.card h2 { font-size: 1.2rem; }
+.card p { margin-bottom: 0; color: var(--ifm-color-emphasis-700); }
+.note { margin-top: 2.25rem; font-size: .9rem; color: var(--ifm-color-emphasis-700); }
+@media (max-width: 720px) { .grid { grid-template-columns: 1fr; } .main { padding: 2rem 0 3rem; } }
