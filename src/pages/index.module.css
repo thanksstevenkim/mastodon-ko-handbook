@@ -1,12 +1,207 @@
-.main { padding: 3rem 0 5rem; }
-.header { max-width: 820px; margin-bottom: 2.5rem; }
-.header h1 { font-size: clamp(2rem, 4vw, 3.1rem); line-height: 1.25; margin-bottom: 1.2rem; }
-.header > p:not(.eyebrow) { color: var(--ifm-color-emphasis-700); font-size: 1.1rem; margin-bottom: 1.6rem; }
-.eyebrow { color: var(--ifm-color-primary); font-weight: 700; letter-spacing: .025em; }
-.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
-.card { display: block; color: var(--ifm-font-color-base); border: 1px solid var(--ifm-color-emphasis-300); border-radius: .65rem; padding: 1.5rem; }
-.card:hover { text-decoration: none; color: var(--ifm-font-color-base); border-color: var(--ifm-color-primary); }
-.card h2 { font-size: 1.2rem; }
-.card p { margin-bottom: 0; color: var(--ifm-color-emphasis-700); }
-.note { margin-top: 2.25rem; font-size: .9rem; color: var(--ifm-color-emphasis-700); }
-@media (max-width: 720px) { .grid { grid-template-columns: 1fr; } .main { padding: 2rem 0 3rem; } }
+.main {
+  padding: 3rem 0 4.5rem;
+}
+
+.header {
+  max-width: 760px;
+  margin-bottom: 3rem;
+}
+
+.eyebrow {
+  color: var(--ifm-color-primary);
+  font-size: .9rem;
+  font-weight: 700;
+  letter-spacing: .025em;
+  margin-bottom: .7rem;
+}
+
+.header h1 {
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 1.25;
+  letter-spacing: -.025em;
+  margin-bottom: 1rem;
+}
+
+.lead {
+  color: var(--ifm-color-emphasis-700);
+  font-size: 1.08rem;
+  line-height: 1.8;
+  margin-bottom: 0;
+}
+
+.section {
+  margin-bottom: 2.75rem;
+}
+
+.sectionTitle {
+  font-size: 1.35rem;
+  line-height: 1.35;
+  margin: 0 0 1rem;
+}
+
+.sectionHeading {
+  display: flex;
+  gap: 1rem;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.sectionHeading .sectionTitle {
+  margin-bottom: 0;
+}
+
+.allGuides {
+  font-size: .92rem;
+  flex-shrink: 0;
+}
+
+.audienceGrid,
+.quickGrid {
+  display: grid;
+  gap: 1rem;
+}
+
+.audienceGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.quickGrid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.audienceCard,
+.quickCard {
+  display: block;
+  color: var(--ifm-font-color-base);
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: .75rem;
+  transition: border-color .16s ease, background-color .16s ease;
+}
+
+.audienceCard {
+  padding: 1.7rem;
+  min-height: 100%;
+}
+
+.audienceCard:hover,
+.quickCard:hover {
+  color: var(--ifm-font-color-base);
+  text-decoration: none;
+  border-color: var(--ifm-color-primary);
+  background: var(--ifm-hover-overlay);
+}
+
+.audienceCard:focus-visible,
+.quickCard:focus-visible,
+.allGuides:focus-visible {
+  outline: 3px solid var(--ifm-color-primary);
+  outline-offset: 3px;
+}
+
+.cardEyebrow {
+  display: block;
+  color: var(--ifm-color-primary);
+  font-size: .85rem;
+  font-weight: 700;
+  margin-bottom: .85rem;
+}
+
+.audienceCard h3 {
+  font-size: 1.32rem;
+  line-height: 1.4;
+  margin-bottom: .75rem;
+}
+
+.audienceCard p,
+.quickCard p {
+  color: var(--ifm-color-emphasis-700);
+  line-height: 1.75;
+}
+
+.audienceCard p {
+  margin-bottom: 1rem;
+}
+
+.steps {
+  display: block;
+  font-size: .86rem;
+  line-height: 1.7;
+  color: var(--ifm-color-emphasis-700);
+  margin-bottom: 1.25rem;
+}
+
+.cardAction {
+  color: var(--ifm-color-primary);
+  font-weight: 700;
+}
+
+.quickCard {
+  padding: 1.3rem 1.4rem;
+}
+
+.quickCard h3 {
+  font-size: 1.05rem;
+  margin-bottom: .65rem;
+}
+
+.quickCard p {
+  font-size: .92rem;
+  margin-bottom: 0;
+}
+
+.labNote {
+  border-left: 3px solid var(--ifm-color-emphasis-400);
+  padding: .75rem 1rem;
+  background: var(--ifm-background-surface-color);
+  margin-bottom: 2rem;
+}
+
+.labNote p {
+  line-height: 1.75;
+  margin-bottom: 0;
+}
+
+.disclaimer {
+  font-size: .88rem;
+  line-height: 1.7;
+  color: var(--ifm-color-emphasis-700);
+  margin-bottom: 0;
+}
+
+@media (max-width: 996px) {
+  .quickGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .main {
+    padding: 2rem 0 3rem;
+  }
+
+  .header {
+    margin-bottom: 2.25rem;
+  }
+
+  .audienceGrid,
+  .quickGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .audienceCard {
+    padding: 1.3rem;
+  }
+
+  .sectionHeading {
+    flex-wrap: wrap;
+    gap: .4rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .audienceCard,
+  .quickCard {
+    transition: none;
+  }
+}
