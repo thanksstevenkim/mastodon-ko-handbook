@@ -68,3 +68,13 @@ DB의 **미디어 경로와 실제 객체 키**, 버킷 이름, S3 endpoint, 공
 
 - [Mastodon 공식 CLI 문서](https://docs.joinmastodon.org/admin/tootctl/)
 - [2026-11-15 머스타드 R2 레거시 캐시 정리 및 주간 자동화 운영 기록](https://github.com/thanksstevenkim/mastodon-lab/blob/main/operations/cloudflare-r2-media-cleanup-and-weekly-automation-2026-11-15.md)
+
+## 운영 사례 메모: 남은 객체는 모두 삭제 대상인가? (2026-11-16, 1차 기록)
+
+머스타드의 과거 R2 중첩 경로를 정리한 뒤에도 여섯 개 레거시 미디어 접두사에 **73,071개, 약 14.601 GiB**가 남아 있었습니다(기존 백업 파일 제외). 첨부파일 정리 로그의 `no_copy=30,867` 및 `mismatch=82` 합계는 해당 접두사의 잔여 객체 **30,949개**와 일치했지만, 이는 개별 객체의 동일성을 완전히 증명하지는 않습니다. 소량의 DB 참조 표본에서는 현재 미디어 레코드가 발견되었고, 그중 세 객체는 정상 경로에도 같은 크기로 존재했습니다.
+
+따라서 **정리 완료의 기준을 잔여 객체 0개로 두지 않고**, 정상 사본 부재·메타데이터 불일치·현재 DB 참조 가능성 때문에 남은 객체를 보존하기로 했습니다. 작은 표본 검사, 객체 크기 일치, DB 레코드 부재 중 어느 하나만으로 전체 삭제를 허가하지 않는다는 교훈입니다. 이미 검증된 정리 배치를 무조건 반복할 이유도 없습니다.
+
+- [머스타드 2026-11-16 레거시 잔여 객체 조사 및 보존 결정](https://github.com/thanksstevenkim/mastodon-lab/blob/main/operations/cloudflare-r2-backup-isolation-and-credential-rotation-2026-11-16.md)
+
+> 실제 운영 조사 결과를 소개하는 **1차 사례 메모**이며, 범용 삭제 명령이나 대규모 복구 절차는 포함하지 않습니다.
